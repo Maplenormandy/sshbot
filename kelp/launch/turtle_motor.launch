@@ -1,0 +1,18 @@
+<launch>
+
+    <group ns="kelp">
+        <param name="motor/rotor_inertia" value="0.01" />
+        <param name="motor/viscous_friction" value="0.1" />
+        <param name="motor/emf_constant" value="0.01" />
+        <param name="motor/torque_constant" value="0.01" />
+        <param name="motor/resistance" value="1.0" />
+        <param name="motor/inductance" value="0.5" />
+        <param name="motor/v_max" value="5.0" />
+    
+        <param name="robot/wheel_radius" value="4.0" />
+        <param name="robot/axle_length" value="0.25" />
+
+        <node pkg="turtlesim" name="sim" type="turtlesim_node" />
+        <node pkg="kelp" name="motor" type="turtle_motor" />
+    </group>
+</launch>
