@@ -17,11 +17,7 @@ First, remove any installations of rosserial
 
     sudo apt-get purge ros-hydro-rosserial*
 
-The version of rosserial in the debs is old. Then, run this to make the new rosserial package.
-
-    cd ~/catkin_ws
-    catkin_make
-    sudo catkin_make install
+The version of rosserial in the debs is old. Then, go to https://github.com/ros-drivers/rosserial and follow the instructions under Usage/Workflow. However, before running catkin_make, look for the rosserial_arudino.zip file in the canada folder. Unzip this over the rosserial_arduino folder in the rosserial repo.
 
 Note that there's a slight change in this version of rosserial from the git version. Namely, the rosserial arduino package was edited for Maple compatibility.
 
