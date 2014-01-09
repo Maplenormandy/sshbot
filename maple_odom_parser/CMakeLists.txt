@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(kelp)
+project(maple_odom_parser)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  std_msgs
   geometry_msgs
-  turtlesim
+  nav_msgs
+  roscpp
+  std_msgs
   tf
 )
 
@@ -70,7 +69,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs
+#   geometry_msgs#   odom_msgs#   std_msgs
 # )
 
 ###################################
@@ -84,8 +83,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES kelp
-#  CATKIN_DEPENDS roscpp rospy std_msgs turtlesim
+#  LIBRARIES maple_odom_parser
+#  CATKIN_DEPENDS geometry_msgs odom_msgs roscpp std_msgs
 #  DEPENDS system_lib
 )
 
@@ -101,23 +100,23 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(kelp
-#   src/${PROJECT_NAME}/kelp.cpp
+# add_library(maple_odom_parser
+#   src/${PROJECT_NAME}/maple_odom_parser.cpp
 # )
 
-## Declare a cpp executable
-# add_executable(kelp_node src/kelp_node.cpp)
+add_executable(maple_odom_parser src/maple_odom_parser.cpp)
+add_dependencies(maple_odom_parser ${catkin_EXPORTED_TARGETS})
+target_link_libraries(maple_odom_parser ${catkin_LIBRARIES})
 
-add_executable(turtle_motor src/turtle_motor.cpp)
-add_dependencies(turtle_motor ${catkin_EXPORTED_TARGETS})
-target_link_libraries(turtle_motor ${catkin_LIBRARIES})
+## Declare a cpp executable
+# add_executable(maple_odom_parser_node src/maple_odom_parser_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(kelp_node kelp_generate_messages_cpp)
+# add_dependencies(maple_odom_parser_node maple_odom_parser_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(kelp_node
+# target_link_libraries(maple_odom_parser_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -136,7 +135,7 @@ target_link_libraries(turtle_motor ${catkin_LIBRARIES})
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS kelp kelp_node
+# install(TARGETS maple_odom_parser maple_odom_parser_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -161,7 +160,7 @@ target_link_libraries(turtle_motor ${catkin_LIBRARIES})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_kelp.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_maple_odom_parser.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

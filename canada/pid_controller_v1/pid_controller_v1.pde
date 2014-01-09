@@ -2,6 +2,7 @@
 #include <Encoder.h>
 
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <std_msgs/String.h>
 
 const uint8 MOTOR_L_PWM = 0; // PWM
@@ -10,13 +11,14 @@ const uint8 MOTOR_L_DIR = 1; // OUTPUT
 const uint8 MOTOR_R_PWM = 2; // PWM
 const uint8 MOTOR_R_DIR = 3; // OUTPUT
 
-const uint8 ENC_L_A = 15; // INPUT
-const uint8 ENC_L_B = 16; // INPUT
-const uint8 ENC_R_A = 17; // INPUT
-const uint8 ENC_R_B = 18; // INPUT
+const uint8 ENC_L_A = 32; // INPUT
+const uint8 ENC_L_B = 31; // INPUT
+const uint8 ENC_R_A = 34; // INPUT
+const uint8 ENC_R_B = 33; // INPUT
+const uint8 ENC_GND = 36; // INPUT_PULLDOWN
+const uint8 ENC_VCC = 37; // INPUT_PULLUP
 
-
-geometry_msgs::Twist odom_msg;
+geometry_msgs::TwistStamped odom_msg;
 geometry_msgs::Twist cmd_vel;
 
 std_msgs::String str_msg;
@@ -41,7 +43,7 @@ void pidCb(const geometry_msgs::Twist& msg)
 }
 
 ros::NodeHandle nh;
-ros::Publisher odom("odom", &odom_msg);
+ros::Publisher odom("odom_partial", &odom_msg);
 ros::Publisher chatter("chatter", &str_msg);
 ros::Subscriber<geometry_msgs::Twist> velocity_cmds("cmd_vel", &cmdCb );
 ros::Subscriber<geometry_msgs::Twist> pid_tune("pid_tune", &pidCb );
@@ -62,6 +64,12 @@ void setup()
     pinMode(ENC_R_A, INPUT);
     pinMode(ENC_R_B, INPUT);
 
+    pinMode(ENC_GND, OUTPUT);
+    pinMode(ENC_VCC, OUTPUT);
+    
+    digitalWrite(ENC_GND, LOW);
+    digitalWrite(ENC_VCC, HIGH);
+
     encL.attach(ENC_L_A, ENC_L_B);
     encR.attach(ENC_R_A, ENC_R_B);
     encL.write(0);
@@ -72,6 +80,8 @@ void setup()
     nh.subscribe(pid_tune);
     nh.advertise(chatter);
     nh.advertise(odom);
+
+    odom_msg.header.frame_id = "READ_THE_DOCS";
 
     toggleLED();
 }
@@ -104,16 +114,24 @@ double rr = 0;
 double rll = 0;
 double rlr = 0;
 
+/*
+ * Pose
+ */
+double th = 0;
+double x = 0;
+double y = 0;
+uint32 seq = 0;
+
 uint32 lasttime = 0;
 uint32 time = 0;
 
 
 const double wheelR = 0.0492125; // 3 7/8" diam in meters
-const double axleR = .105; // halfway across bot in meters
+const double axleL = .105; // halfway across bot in meters
 const double convFactor = 2.0*PI/64.0/29.0;
 
-const long delaytime = 16667;
-//const long delaytime = 30000;
+const uint32 delaytime = 16667;
+//const uint32 delaytime = 30000;
 
 void loop()
 {
@@ -125,6 +143,11 @@ void loop()
     // Precise timekeeping
     lasttime = time;
     time = micros();
+    odom_msg.header.stamp.sec = time/1000000 + nh.sec_offset;
+    odom_msg.header.stamp.nsec = (time%1000000)*1000UL + nh.nsec_offset;
+    ros::normalizeSecNSec(odom_msg.header.stamp.sec, odom_msg.header.stamp.nsec);
+    odom_msg.header.seq = seq;
+    ++seq;
     double dt = (time-lasttime)/1000000.0;
 
     // Convert to angular values
@@ -144,8 +167,23 @@ void loop()
     ydll = ydl;
     ydlr = ydr;
 
-    odom_msg.linear.x = (ydl+ydr) * wheelR / 2;
-    odom_msg.angular.z = (ydr-ydl) * wheelR / axleR / 2;
+    // Report the calculated velocity
+    // TODO Higher order calculation
+    double esym = (ydl+ydr) * wheelR / 2;
+    double eanti = (ydr-ydl) * wheelR / axleR / 2;
+    odom_msg.twist.linear.x = esym;
+    odom_msg.twist.angular.z = eanti;
+
+    // Calculate the updated pose
+    // TODO Higher order calculation
+    x += esym * cos(th) * dt;
+    y += esym * sin(th) * dt;
+    th += eanti * dt;
+
+    // Report the calculated pose
+    odom_msg.twist.linear.z = th;
+    odom_msg.twist.angular.x = x;
+    odom_msg.twist.angular.y = y;
 
     // Turn commanded velocity to L/R commands
     double sym = cmd_vel.linear.x/wheelR;

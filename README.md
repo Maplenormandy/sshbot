@@ -29,8 +29,8 @@ Try and compile any program from the Maple IDE to make sure it's working.
 
 Finally, when you want to put a program on the Maple that uses rosserial, look at the rosserial_arduino tutorials (they'll translate directly). Simply deply from the Maple IDE, then run
 
-    rosrun rosserial_python serial_node.py _port:=/dev/ttyACM# _baud:=57600
+    rosrun rosserial_python serial_node.py _port:=/dev/ttyACM0 _baud:=115200
 
-where # is the Maple USB serial port.
+where /dev/ttyACM0 is the Maple USB serial port.
 
 There you go! Everything should work now.
