@@ -1,7 +1,7 @@
 PID Controller v1
 =================
 
-Is actually a PD controller. Implements a /cmd_vel and /odom channel for the motors from Maple at 60 Hz. To run, deploy it to the Maple, then run the rosserial_python serial node.
+Is actually a PD controller. Implements a /cmd_vel and /odom_partial (see maple_odom_parser) channel for the motors from Maple at 60 Hz. To run, deploy it to the Maple, then run the rosserial_python serial node.
 
 If it's working, then the LED will blink at 60 Hz (which is fast).
 
