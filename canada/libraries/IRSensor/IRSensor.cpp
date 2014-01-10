@@ -2,7 +2,11 @@
 
 #include "IRSensor.h"
 
-IRSensor::IRSensor(float _slope, float _intercept,
+IRSensor::IRSensor()
+{
+}
+
+void IRSensor::calibrate(float _slope, float _intercept,
         float _minRange, float _maxRange)
 {
     slope = _slope;
@@ -32,3 +36,4 @@ float IRSensor::read(void)
     }
     return dist;
 }
+

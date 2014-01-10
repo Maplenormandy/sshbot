@@ -1,0 +1,144 @@
+#include <PinSettings.h>
+
+#include "DifferentialDrive.h"
+
+double DifferentialDrive::kp;
+double DifferentialDrive::kd;
+double DifferentialDrive::lowpass;
+double DifferentialDrive::int_sat;
+
+geometry_msgs::Twist DifferentialDrive::cmd_vel_msg;
+
+void DifferentialDrive::pidTuneCb(const geometry_msgs::Twist& msg)
+{
+    kp = msg.linear.x;
+    kd = msg.linear.y;
+    int_sat = msg.linear.z;
+    lowpass = msg.angular.x;
+}
+
+void DifferentialDrive::cmdCb(const geometry_msgs::Twist& msg)
+{
+    cmd_vel_msg = msg;
+}
+
+char read_the_docs[14] = "READ_THE_DOCS";
+
+DifferentialDrive::DifferentialDrive() :
+    odom_msg(),
+    odom("odom_partial", &odom_msg),
+    pid_tune("pid_tune", &pidTuneCb),
+    cmd_vel("cmd_vel", &cmdCb),
+    st(odom_msg.header)
+{
+    encL.attach(ENC_L_A, ENC_L_B);
+    encR.attach(ENC_R_A, ENC_R_B);
+
+    odom_msg.header.frame_id = read_the_docs;
+}
+
+void DifferentialDrive::reset(void)
+{
+    kp = 150000;
+    kd = 12000;
+    lowpass = 0.7;
+    int_sat = PI;
+
+    yl = 0;
+    yr = 0;
+    yil = 0;
+    yir = 0;
+    yll = 0;
+    ylr = 0;
+    ydll = 0;
+    ydlr = 0;
+    rdl = 0;
+    rdr = 0;
+    rl = 0;
+    rr = 0;
+    rll = 0;
+    rlr = 0;
+    th = 0;
+    x = 0;
+    y = 0;
+
+    encL.write(0);
+    encR.write(0);
+}
+
+void DifferentialDrive::loop(void)
+{
+    // Encoder values
+    long el = encL.read();
+    long er = encR.read();
+    st.update(micros());
+
+    // Convert to angular values
+    yl = el*convFactor;
+    // Right encoder should be flipped
+    yr = -er*convFactor;
+
+    // Calculate derivatives
+    double ydl = (yl - yll) / st.dt;
+    double ydr = (yr - ylr) / st.dt;
+
+    ydl = lowpass*ydll + (1-lowpass)*ydl;
+    ydr = lowpass*ydlr + (1-lowpass)*ydr;
+
+    yll = yl;
+    ylr = yr;
+    ydll = ydl;
+    ydlr = ydr;
+
+    // Report the calculated velocity
+    // TODO Higher order calculation
+    double esym = (ydl+ydr) * wheelR / 2;
+    double eanti = (ydr-ydl) * wheelR / axleL;
+    odom_msg.twist.linear.x = esym;
+    odom_msg.twist.angular.z = eanti;
+
+    // Calculate the updated pose
+    // TODO Higher order calculation
+    x += esym * cos(th) * st.dt;
+    y += esym * sin(th) * st.dt;
+    th += eanti * st.dt;
+
+    // Report the calculated pose
+    odom_msg.twist.linear.z = th;
+    odom_msg.twist.angular.x = x;
+    odom_msg.twist.angular.y = y;
+
+    // Turn commanded velocity to L/R commands
+    double sym = cmd_vel_msg.linear.x/wheelR;
+    double anti = cmd_vel_msg.angular.z*axleL/wheelR;
+    rdl = sym-anti;
+    rdr = sym+anti;
+
+    // Integrate velocity command
+    rl += rdl*st.dt;
+    rr += rdr*st.dt;
+
+    // Saturation
+    if (abs(rl-yl)>int_sat || abs(rr-yr)>int_sat)
+    {
+        // TODO Overspeed warning
+        //str_msg.data = "Windup";
+        //chatter.publish(&str_msg);
+    }
+    rl = constrain(rl, yl-int_sat,yl+int_sat);
+    rr = constrain(rr, yr-int_sat,yr+int_sat);
+
+    // command
+    double outl = (rl-yl)*kp + (rdl-ydl)*kd;
+    double outr = (rr-yr)*kp + (rdr-ydr)*kd;
+
+    // Output to motors
+    // HIGH drives forward
+    digitalWrite(MOTOR_L_DIR, outl < 0 ? LOW : HIGH);
+    digitalWrite(MOTOR_R_DIR, outr < 0 ? LOW : HIGH);
+    pwmWrite(MOTOR_L_PWM, (uint16) constrain(abs(outl), 0, 65535));
+    pwmWrite(MOTOR_R_PWM, (uint16) constrain(abs(outr), 0, 65535));
+
+    odom.publish(&odom_msg);
+}
+

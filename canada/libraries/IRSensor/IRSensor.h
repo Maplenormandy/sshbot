@@ -15,7 +15,9 @@ class IRSensor
 
         uint8_t pin;
     public:
-        IRSensor(float _slope, float _intercept,
+        IRSensor();
+
+        void calibrate(float _slope, float _intercept,
                 float minRange, float maxRange);
 
         // Attaches the IR Sensor to a pin. Returns 0 if failure,

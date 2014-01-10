@@ -15,8 +15,8 @@ const uint8 ENC_L_A = 32; // INPUT
 const uint8 ENC_L_B = 31; // INPUT
 const uint8 ENC_R_A = 34; // INPUT
 const uint8 ENC_R_B = 33; // INPUT
-const uint8 ENC_GND = 36; // INPUT_PULLDOWN
-const uint8 ENC_VCC = 37; // INPUT_PULLUP
+const uint8 ENC_GND = 36; // OUTPUT, LOW
+const uint8 ENC_VCC = 37; // OUTPUT, HIGH
 
 geometry_msgs::TwistStamped odom_msg;
 geometry_msgs::Twist cmd_vel;
