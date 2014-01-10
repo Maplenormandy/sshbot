@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+
+import rospy
+import numpy as np
+import cv2
+from geometry_msgs.msg import Twist
+
+def ballfinder():
+    cv2.startWindowThread()
+    cv2.namedWindow('frame3')
+    cap = cv2.VideoCapture(2)
+    cap.set(3,640)
+    cap.set(4,480)
+
+    pub = rospy.Publisher('/cmd_vel', Twist)
+    rospy.init_node('findballs')
+    msg = Twist()
+
+    lastCx = 120
+    lastR = 100
+
+    while not rospy.is_shutdown():
+
+        ret, orig = cap.read()
+        frame = orig.copy()
+        blur = cv2.blur(frame, (10,10))
+        hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+
+        lower_red1 = np.array([0,255*0.4,255*0.4])
+        upper_red1 = np.array([10,255*0.95,255*0.95])
+
+        lower_red2 = np.array([170,255*0.50,255*0.50])
+        upper_red2 = np.array([180,255*0.73,255*0.84])
+
+        src1 = cv2.inRange(hsv, lower_red1, upper_red1)
+        src2 = cv2.inRange(hsv, lower_red2, upper_red2)
+        combined = cv2.bitwise_or(src1, src2)
+
+        contours,hierarchy = cv2.findContours(combined.copy(), 1, 2)
+
+        maxArea = -1
+        maxCx = -1
+        maxR = -1
+
+        for s in contours:
+            area = cv2.contourArea(s)
+            if area > 100:
+                M = cv2.moments(s)
+                cx = int(M['m10']/M['m00'])
+                cy = int(M['m01']/M['m00'])
+                r = (area / 3.14)**0.5
+                cv2.circle(frame, (cx, cy), int(r), (0, 255, 0), 1)
+                if area > maxArea:
+                    maxArea = area
+                    maxCx = cx
+                    maxR = r
+
+        if maxArea > 0:
+            maxCx = 0.3*maxCx + 0.7*lastCx
+            maxR = 0.3*maxR + 0.7*lastR
+
+            lastCx = maxCx
+            lastR = maxR
+
+            msg.linear.x = 0.5 / maxR
+            msg.angular.z = (120 - maxCx)*0.003
+        else:
+            msg.linear.x = 0
+            msg.angular.z = 0
+
+        pub.publish(msg)
+
+        cv2.imshow('frame3', frame)
+
+        rospy.sleep(0.1)
+
+# When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+
+    try:
+        ballfinder()
+    except rospy.ROSInterruptException:
+        pass
+
