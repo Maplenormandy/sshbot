@@ -67,6 +67,10 @@ find_package(catkin REQUIRED COMPONENTS
 #   Action2.action
 # )
 
+generate_dynamic_reconfigure_options(
+  cfg/Wallflower.cfg
+)
+
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
@@ -90,7 +94,7 @@ catkin_package(
 )
 
 ###########
-## Build ##
+## Buila ##
 ###########
 
 ## Specify additional locations of header files
