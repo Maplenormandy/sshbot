@@ -28,14 +28,11 @@ void setup()
 {
     pinSetup();
 
-    deb();
     nh.initNode();
     nh.advertise(chatter);
 
-    deb();
     SensorTimer::init(&nh);
 
-    deb();
     nh.advertise(irs.ir_data);
 
     nh.subscribe(dd.cmd_vel);
@@ -47,7 +44,6 @@ void setup()
     irs.sensors[1].calibrate(0.00264713840204f, 1.04544891075f,
             0.1f, 0.8f);
     
-    deb();
     dd.reset();
 
     toggleLED();
@@ -56,7 +52,7 @@ void setup()
 uint32 seq = 0;
 uint32 time = 0;
 
-const uint32 delaytime = 16667;
+const uint32 delaytime = 15000;
 //const uint32 delaytime = 30000;
 
 void loop()
@@ -68,6 +64,11 @@ void loop()
     irs.loop();
 
     nh.spinOnce();
+
+    if (digitalRead(BOARD_BUTTON_PIN) == HIGH)
+    {
+        dd.reset();
+    }
 
     ++seq;
     toggleLED();

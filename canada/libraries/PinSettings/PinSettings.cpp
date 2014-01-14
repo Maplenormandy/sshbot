@@ -3,6 +3,7 @@
 void pinSetup(void)
 {
     pinMode(BOARD_LED_PIN, OUTPUT);
+    pinMode(BOARD_BUTTON_PIN, INPUT);
 
     pinMode(MOTOR_L_PWM, PWM);
     pinMode(MOTOR_L_DIR, OUTPUT);

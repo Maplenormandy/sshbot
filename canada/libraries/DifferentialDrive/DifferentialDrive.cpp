@@ -39,10 +39,10 @@ DifferentialDrive::DifferentialDrive() :
 
 void DifferentialDrive::reset(void)
 {
-    kp = 150000;
-    kd = 12000;
-    lowpass = 0.7;
-    int_sat = PI;
+    kp = 180000;
+    kd = 11000;
+    lowpass = 0.3;
+    int_sat = 1;
 
     yl = 0;
     yr = 0;
@@ -93,15 +93,18 @@ void DifferentialDrive::loop(void)
     // Report the calculated velocity
     // TODO Higher order calculation
     double esym = (ydl+ydr) * wheelR / 2;
-    double eanti = (ydr-ydl) * wheelR / axleL;
+    double eanti = (ydr-ydl) * wheelR / axleR;
     odom_msg.twist.linear.x = esym;
     odom_msg.twist.angular.z = eanti;
 
     // Calculate the updated pose
     // TODO Higher order calculation
-    x += esym * cos(th) * st.dt;
-    y += esym * sin(th) * st.dt;
+    // Currently: x,y 2nd order, th 1st order
+    x += esym * cos(th) * st.dt / 2.0;
+    y += esym * sin(th) * st.dt / 2.0;
     th += eanti * st.dt;
+    x += esym * cos(th) * st.dt / 2.0;
+    y += esym * sin(th) * st.dt / 2.0;
 
     // Report the calculated pose
     odom_msg.twist.linear.z = th;
@@ -110,7 +113,7 @@ void DifferentialDrive::loop(void)
 
     // Turn commanded velocity to L/R commands
     double sym = cmd_vel_msg.linear.x/wheelR;
-    double anti = cmd_vel_msg.angular.z*axleL/wheelR;
+    double anti = cmd_vel_msg.angular.z*axleR/wheelR;
     rdl = sym-anti;
     rdr = sym+anti;
 
@@ -133,9 +136,9 @@ void DifferentialDrive::loop(void)
     double outr = (rr-yr)*kp + (rdr-ydr)*kd;
 
     // Output to motors
-    // HIGH drives forward
-    digitalWrite(MOTOR_L_DIR, outl < 0 ? LOW : HIGH);
-    digitalWrite(MOTOR_R_DIR, outr < 0 ? LOW : HIGH);
+    // LOW drives forward
+    digitalWrite(MOTOR_L_DIR, outl < 0 ? HIGH : LOW);
+    digitalWrite(MOTOR_R_DIR, outr < 0 ? HIGH : LOW);
     pwmWrite(MOTOR_L_PWM, (uint16) constrain(abs(outl), 0, 65535));
     pwmWrite(MOTOR_R_PWM, (uint16) constrain(abs(outr), 0, 65535));
 
