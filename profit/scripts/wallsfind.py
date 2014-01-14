@@ -15,7 +15,7 @@ def wallsfind():
     cv2.namedWindow('blue')
     cv2.namedWindow('white')
 
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(2)
     cap.set(3,320)
     cap.set(4,240)
 
@@ -131,12 +131,12 @@ def wallsfind():
 
         msg.angular.z = np.clip(angleAwayDeg/100, -0.4, 0.4)
 
-        distAwayCm = (100 - distAway[0])*0.4 + pixsl*0.6
+        distAwayCm = (100 - distAway[0])*0.7 + pixsl*0.3
         pixs[ind] = 100 - distAway[0]
         ind = (ind+1)%32
         print np.mean(pixs)
 
-        msg.linear.x = np.clip((distAwayCm-77)/80, -0.12, 0.12)
+        msg.linear.x = np.clip((distAwayCm-82.37)/120, -0.12, 0.12)
 
         pixsl = distAwayCm
 
