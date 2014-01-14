@@ -9,14 +9,17 @@ def ballfinder():
     cv2.startWindowThread()
     cv2.namedWindow('frame3')
     cap = cv2.VideoCapture(2)
-    cap.set(3,640)
-    cap.set(4,480)
+    # 352 x 288 is the best reliable 16x9 resolutions
+    width = 352
+    cap.set(3,width)
+    cap.set(4,288)
 
     pub = rospy.Publisher('/cmd_vel', Twist)
     rospy.init_node('findballs')
     msg = Twist()
 
-    lastCx = 120
+    # State variables for low pass filter
+    lastCx = width/2
     lastR = 100
 
     while not rospy.is_shutdown():
@@ -38,35 +41,41 @@ def ballfinder():
 
         contours,hierarchy = cv2.findContours(combined.copy(), 1, 2)
 
-        maxArea = -1
+        # Used to decide when to look for a ball
+        maxGood = -1
         maxCx = -1
         maxR = -1
 
         for s in contours:
             area = cv2.contourArea(s)
-            if area > 100:
+            if area > 20:
                 M = cv2.moments(s)
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 r = (area / 3.14)**0.5
                 cv2.circle(frame, (cx, cy), int(r), (0, 255, 0), 1)
-                if area > maxArea:
-                    maxArea = area
+                # Track balls that are lower and closer to the center of FOV
+                good = cy+abs(cx-width/2)*0.2
+                if good > maxGood:
+                    maxGood = good
                     maxCx = cx
                     maxR = r
 
-        if maxArea > 0:
-            maxCx = 0.3*maxCx + 0.7*lastCx
+        if maxGood > 0:
+            # Lowpass filter
+            maxCx = 0.7*maxCx + 0.3*lastCx
             maxR = 0.3*maxR + 0.7*lastR
 
             lastCx = maxCx
             lastR = maxR
 
-            msg.linear.x = 0.5 / maxR
-            msg.angular.z = (120 - maxCx)*0.003
+            # Quadratic velocity function, slow when far and close
+            msg.linear.x = msg.linear.x*0.7 + (2.0 / (maxR + 3))*0.3
+            # Proportional angular velocity control. Consider adding PID
+            msg.angular.z = msg.angular.z*0.3 + ((width/2 - maxCx)*0.005)*0.7
         else:
-            msg.linear.x = 0
-            msg.angular.z = 0
+            msg.linear.x = msg.linear.x*0.7
+            msg.angular.z = msg.angular.z*0.3
 
         pub.publish(msg)
 
