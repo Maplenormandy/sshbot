@@ -20,6 +20,7 @@ void pinSetup(void)
 
     pinMode(IRSENSORS[0], INPUT);
     pinMode(IRSENSORS[1], INPUT);
+    pinMode(IRSENSORS[2], INPUT);
 
     digitalWrite(ENC_GND, LOW);
     digitalWrite(ENC_VCC, HIGH);

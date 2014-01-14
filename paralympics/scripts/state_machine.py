@@ -5,6 +5,7 @@ import rospy
 import smach
 import smach_ros
 
+"""
 # define state Foo
 class Foo(smach.State):
     def __init__(self):
@@ -49,8 +50,46 @@ def main():
 
         # Execute SMACH plan
     outcome = sm.execute()
+"""
+
+class DriveStraight(smach.SPAState):
+    def __init__(self):
+        smach.SPAState.__init__(self, input_keys=['distance']
+                                      output_keys=[])
+
+    def execute(self, userdata):
+        r = rospy.Rate(10)
+        for i in range(userdata.distance):
+            print i
+            r.sleep()
+        return 'succeeded'
+
+class TurnPoint(smach.SPAState):
+    def __init__(self):
+        smach.SPAState.__init__(self, input_keys=['distance']
+                                      output_keys=[])
+
+    def executive(self, userdata):
+        r = rospy.Rate(10)
+        for i in range(userdata.distance):
+            if self.preempt_requested():
+                return 'preempted'
+            print i
+            r.sleep()
+        return 'succeeded'
 
 
+def main():
+    rospy.init_node('paralympics_state_machine')
+
+    # Create SMACH state machine
+    sm_root = smach.StateMachine(outcomes=['succeeded, preempted, aborted'])
+    sis = smach_ros.IntrospectionServer('paralympics', sm, '/sm_root')
+    sis.start()
+
+    outcome = sm.execute()
+    rospy.spin()
+    sis.stop()
 
 if __name__ == '__main__':
     main()

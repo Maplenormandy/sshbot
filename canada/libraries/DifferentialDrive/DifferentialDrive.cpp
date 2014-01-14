@@ -41,8 +41,8 @@ void DifferentialDrive::reset(void)
 {
     kp = 180000;
     kd = 11000;
-    lowpass = 0.3;
-    int_sat = 1;
+    lowpass = 0.7;
+    int_sat = 70000.0/kp;
 
     yl = 0;
     yr = 0;
@@ -61,6 +61,9 @@ void DifferentialDrive::reset(void)
     th = 0;
     x = 0;
     y = 0;
+
+    cmd_vel_msg.linear.x = 0.0;
+    cmd_vel_msg.angular.z = 0.0;
 
     encL.write(0);
     encR.write(0);
@@ -82,8 +85,8 @@ void DifferentialDrive::loop(void)
     double ydl = (yl - yll) / st.dt;
     double ydr = (yr - ylr) / st.dt;
 
-    ydl = lowpass*ydll + (1-lowpass)*ydl;
-    ydr = lowpass*ydlr + (1-lowpass)*ydr;
+    ydl = (1-lowpass)*ydll + lowpass*ydl;
+    ydr = (1-lowpass)*ydlr + lowpass*ydr;
 
     yll = yl;
     ylr = yr;
