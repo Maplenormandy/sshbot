@@ -11,9 +11,28 @@ import numpy as np
 odom = None
 cmd_vel = None
 
+done = False
+
+target = 0.3048*5/2
+
 def odomCb(msg):
-    global cmd_vel
-    odom = msg
+    global cmd_vel, target, done
+    vel = Twist()
+
+    vel.linear.x = np.clip(target-msg.twist.angular.x, -0.1, 0.1)
+
+    if abs(vel.linear.x) < 0.01:
+        if target > 0:
+            target = 0
+        else:
+            done = True
+
+    if not done:
+        print vel
+        cmd_vel.publish(vel)
+    else:
+        vel.linear.x = 0
+        cmd_vel.publish(vel)
 
 def main():
     global odom, cmd_vel
@@ -22,26 +41,7 @@ def main():
     cmd_vel = rospy.Publisher("/cmd_vel", Twist)
     rospy.Subscriber("/odom_partial", TwistStamped, odomCb)
 
-    msg = Twist()
-
-    dist = 0.3048*5
-
-    tStraight = dist / 0.1
-
-    while not rospy.is_shutdown():
-        msg.linear.x = 0.1
-        msg.angular.z = 0
-        cmd_vel.publish(msg)
-        rospy.sleep(tStraight)
-
-        rospy.sleep(1.0)
-
-        msg.linear.x = -0.1
-        msg.angular.z = 0
-        cmd_vel.publish(msg)
-        rospy.sleep(tStraight)
-
-        rospy.spin()
+    rospy.spin()
 
 
 if __name__=='__main__':

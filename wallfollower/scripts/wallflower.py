@@ -39,14 +39,14 @@ def irCb(msg):
     vel = Twist()
 
     if not closeenuf or (msg.ranges[2] > 0.29):
-        if msg.ranges[1] < 0.20:
+        if msg.ranges[1] < 0.16:
             vel.linear.x = 0.05
-            vel.angular.z = 0.18
+            vel.angular.z = 0.15
             closeenuf = msg.ranges[2] < 0.20
             rospy.loginfo('scary!')
         else:
             vel.linear.x = 0.01
-            vel.angular.z = 0.25
+            vel.angular.z = 0.21
             closeenuf = msg.ranges[2] < 0.20
             rospy.loginfo('holy shit')
     else:

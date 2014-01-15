@@ -79,6 +79,7 @@ class TurnPoint(smach.SPAState):
         return 'succeeded'
 
 
+
 def main():
     rospy.init_node('paralympics_state_machine')
 
@@ -86,6 +87,8 @@ def main():
     sm_root = smach.StateMachine(outcomes=['succeeded, preempted, aborted'])
     sis = smach_ros.IntrospectionServer('paralympics', sm, '/sm_root')
     sis.start()
+
+
 
     outcome = sm.execute()
     rospy.spin()

@@ -15,7 +15,7 @@ def wallsfind():
     cv2.namedWindow('blue')
     cv2.namedWindow('white')
 
-    cap = cv2.VideoCapture(2)
+    cap = cv2.VideoCapture(1)
     cap.set(3,320)
     cap.set(4,240)
 
@@ -136,7 +136,7 @@ def wallsfind():
         ind = (ind+1)%32
         print np.mean(pixs)
 
-        msg.linear.x = np.clip((distAwayCm-82.37)/120, -0.12, 0.12)
+        msg.linear.x = np.clip((distAwayCm-76.1)/120, -0.12, 0.12)
 
         pixsl = distAwayCm
 
