@@ -34,3 +34,7 @@ Finally, when you want to put a program on the Maple that uses rosserial, look a
 where /dev/ttyACM0 is the Maple USB serial port.
 
 There you go! Everything should work now.
+
+## Update: Bridge to Bot
+
+Please see the b2b package for new instructions on how to connect to the Maple. It replaces the rosserial_python run.

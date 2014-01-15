@@ -70,9 +70,9 @@ class DifferentialDrive
         /*
          * Robot Parameters
          */
-        static const double wheelR = 0.0492125; // 3 7/8" diam in meters
+        static const double wheelR = 3.875*2.54/200.0; // 3 7/8" diam in meters
         // halfway across bot in meters
-        static const double axleL = .21;
+        static const double axleR = 10.75*2.54/200.0;
         // encoder ticks to theta
         static const double convFactor = 2.0*PI/64.0/29.0; 
 
@@ -81,7 +81,6 @@ class DifferentialDrive
 
         // SensorTimer, useful helper class
         SensorTimer st;
-
 
         /*
          * Functions

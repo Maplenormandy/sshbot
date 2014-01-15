@@ -3,8 +3,8 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/TwistStamped.h>
 
-ros::Publisher odom_pub;
-tf::TransformBroadcaster odom_broadcaster;
+ros::Publisher* p_odom_pub;
+tf::TransformBroadcaster* p_odom_broadcaster;
 
 void futzOdom(const geometry_msgs::TwistStamped& msg)
 {
@@ -28,7 +28,7 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
     odom_trans.transform.rotation = odom_quat;
 
     //send the transform
-    odom_broadcaster.sendTransform(odom_trans);
+    p_odom_broadcaster->sendTransform(odom_trans);
 
     //next, we'll publish the odometry message over ROS
     nav_msgs::Odometry odom;
@@ -48,16 +48,20 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
     odom.twist.twist.angular.z = msg.twist.angular.z;
 
     //publish the message
-    odom_pub.publish(odom);
+    p_odom_pub->publish(odom);
 }
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "odometry_publisher");
+    ros::init(argc, argv, "msg_parser");
 
     ros::NodeHandle n;
     ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
     ros::Subscriber odom_read = n.subscribe("odom_partial", 1000, futzOdom);
+    tf::TransformBroadcaster odom_broadcaster;
+
+    p_odom_pub = &odom_pub;
+    p_odom_broadcaster = &odom_broadcaster;
 
     ros::spin();
     ros::spin();

@@ -17,7 +17,7 @@ const uint8 ENC_R_B = 33; // INPUT
 const uint8 ENC_GND = 36; // OUTPUT, LOW
 const uint8 ENC_VCC = 37; // OUTPUT, HIGH
 
-const uint8 IRSENSORS[] = { 15, 17 };
+const uint8 IRSENSORS[] = { 17, 16, 15 };
 
 void pinSetup(void);
 
