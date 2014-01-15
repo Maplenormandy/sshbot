@@ -36,7 +36,7 @@ class DriveStraightState(smach.State):
             if (curr_dist > (abs(userdata.distance)-.002)):
                 return 'succeeded'
             v_wheel = userdata.Kp*userdata.direction*(abs(userdata.distance)-curr_dist) 
-            vel_set = min(userdata.direction*userdata.bot_speed, v_wheel)
+            vel_set = min(abs(userdata.bot_speed), abs(v_wheel))*userdata.direction
             #TODO actually sen cmd_vel msg
             if (rospy.get_time()-userdata.start_time)>10*userdata.run_time:
                 return 'aborted'
