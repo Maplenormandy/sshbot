@@ -32,7 +32,7 @@ class DriveStraightState(smach.State):
         pos = rospy.wait_for_message("odom_partial", TwistStamped)
         vel_set = 0
         if userdata.feedback:
-            curr_dist = (((pos.linear.x-userdata.start_x)**2+(pos.linear.y-userdata.start_y)**2)**0.5)
+            curr_dist = (((pos.twist.linear.x-userdata.start_x)**2+(pos.twist.linear.y-userdata.start_y)**2)**0.5)
             if (curr_dist > (abs(userdata.distance)-.002)):
                 return 'succeeded'
             v_wheel = userdata.Kp*userdata.direction*(abs(userdata.distance)-curr_dist) 
@@ -46,7 +46,7 @@ class DriveStraightState(smach.State):
             vel_set = userdata.direction*userdata.bot_speed
         
         vel_msg = Twist()
-        vel_msg.linear.x = vel_set
+        vel_msg.twist.linear.x = vel_set
         pub.publish(vel_msg) 
         
         r.sleep()    
