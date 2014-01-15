@@ -116,6 +116,8 @@ while(True):
 
     angleAwayDeg = pixelsToAngle(angle)
     distAwayCm = pixelsToCMDepth(distAway) #- angleAwayDeg/10 #fudge factor, for fun
+    
+    # Lol, this draws a robot.
 
     blank = np.ones((240,320))
     cv2.line(blank, (0,30), (320,30), (0, 0, 255))
