@@ -95,7 +95,7 @@ void DifferentialDrive::loop(void)
 
     // Report the calculated velocity
     // TODO Higher order calculation
-    double esym = (ydl+ydr) * wheelR / 2;
+    double esym = (ydl+ydr) * wheelR;
     double eanti = (ydr-ydl) * wheelR / axleR;
     odom_msg.twist.linear.x = esym;
     odom_msg.twist.angular.z = eanti;
