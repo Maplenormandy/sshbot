@@ -17,11 +17,11 @@ while(True):
        
     ret, orig = cap.read()  
     frame = orig.copy()
-    blur = cv2.blur(frame, (5,2))
+    blur = cv2.blur(frame, (10,5))
     hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
         
-    lower_blue1 = np.array([98,255*0.2,255*0.1])
-    upper_blue1 = np.array([120,255*0.9,255*0.95])
+    lower_blue1 = np.array([98,255*0.2,255*0.3])
+    upper_blue1 = np.array([120,255*0.9,255*0.9])
     
     imgBlue = cv2.inRange(hsv, lower_blue1, upper_blue1)
     fContours = imgBlue.copy()
@@ -39,6 +39,8 @@ while(True):
         area = a
         contour = cnt
     
+    cv2.drawContours(frame, contour, -1, (100,100,100), 1)
+    
     # draws a line right on the money. the money being the blue line. Make this code better, geez.
     line = cv2.fitLine(contour, 1, 0, 0.01, 0.01)
     #pt1 = (line[0]*10, line[1]*10)
@@ -48,10 +50,10 @@ while(True):
     # dot(0, b)
     pt1 = (0, b)
     pt2 = (WIDTH,m*WIDTH + b)
-    # cv2.line(frame, pt1, pt2, (0, 255, 0))
+    cv2.line(frame, pt1, pt2, (255, 255, 0))
     
     # increase this number if you want your code to run slower
-    SEGMENTS = 16
+    SEGMENTS = 10
     upper, lower = [],[]
     for i in range(SEGMENTS):
       upper.append([])

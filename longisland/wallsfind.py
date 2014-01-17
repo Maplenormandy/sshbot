@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import math
 
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(1)
 cap.set(3,320)
 cap.set(4,240)
 
@@ -21,7 +21,7 @@ while(True):
     blur = cv2.blur(frame, (5,2))
     hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
-    lower_blue1 = np.array([95,255*0.15,255*0.1])
+    lower_blue1 = np.array([80,255*0.15,255*0.1])
     upper_blue1 = np.array([125,255*0.7,255*0.9])
 
     imgBlue = cv2.inRange(hsv, lower_blue1, upper_blue1)
