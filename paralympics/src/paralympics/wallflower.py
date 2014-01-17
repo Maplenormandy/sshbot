@@ -90,7 +90,7 @@ class Wallflower(StateMachine):
 
 
 if __name__=='__main__':
-    rospy.init_node('boxxy')
+    rospy.init_node('wallflower')
 
     cmd_vel = rospy.Publisher("/cmd_vel", Twist)
 
