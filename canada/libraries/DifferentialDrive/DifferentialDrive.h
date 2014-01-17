@@ -74,7 +74,7 @@ class DifferentialDrive
         // halfway across bot in meters
         static const double axleR = 10.75*2.54/200.0;
         // encoder ticks to theta
-        static const double convFactor = 2.0*PI/64.0/29.0; 
+        static const double convFactor = 2.0*PI/32.0/29.0; 
 
         // Encoders from encoder library
         Encoder encL, encR;

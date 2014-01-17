@@ -1,6 +1,7 @@
-#include <wirish.h>
 
 #include "IRSensor.h"
+
+#include <wirish.h>
 
 IRSensor::IRSensor()
 {
@@ -28,12 +29,31 @@ float IRSensor::read(void)
     float dist = 1.0 / (slope*val+intercept);
     if (dist < minRange)
     {
-        return -HUGE_VAL;
+        return -HUGE_VALF;
     }
     else if (dist > maxRange)
     {
-        return HUGE_VAL;
+        return HUGE_VALF;
     }
     return dist;
 }
 
+IRSuite::IRSuite() :
+    ir_raw("ir_raw", &ir_msg),
+    st(ir_msg.header)
+{
+}
+
+void IRSuite::loop(void)
+{
+    ir_msg.l.fwd = l.fwd.read();
+    ir_msg.l.mid = l.mid.read();
+    ir_msg.l.bak = l.bak.read();
+    //ir_msg.r.fwd = r.fwd.read();
+    //ir_msg.r.mid = r.mid.read();
+    //ir_msg.r.bak = r.bak.read();
+    ir_msg.fwd = fwd.read();
+
+    st.update(micros());
+    ir_raw.publish(&ir_msg);
+}

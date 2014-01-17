@@ -2,7 +2,10 @@
 #ifndef IRSENSOR_H_
 #define IRSENSOR_H_
 
+#include <stdlib.h>
 #include <inttypes.h>
+#include <paralympics/IRStamped.h>
+#include <SensorTimer.h>
 
 class IRSensor
 {
@@ -25,6 +28,29 @@ class IRSensor
         uint8_t attach(uint8_t pinIn);
         // Reads a distance. Returns -Inf if too close or +Inf if too far
         float  read(void);
+};
+
+class IRSuite
+{
+    public:
+        IRSuite();
+
+        paralympics::IRStamped ir_msg;
+        ros::Publisher ir_raw;
+
+        SensorTimer st;
+
+        struct IRArray
+        {
+            IRSensor fwd, mid, bak;
+        } l, r;
+
+        IRSensor fwd;
+
+        /*
+         * Functions
+         */
+        void loop(void);
 };
 
 #endif

@@ -64,6 +64,5 @@ int main(int argc, char** argv)
     p_odom_broadcaster = &odom_broadcaster;
 
     ros::spin();
-    ros::spin();
 }
 

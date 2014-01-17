@@ -9,6 +9,21 @@ Please add individual readmes to each subdirectory!
 
 The username/password for the tablet is sshb:sshb
 
+# How to launch our robot, The Definitive Guide
+
+In separate terminal windows,
+
+    roscore
+    roslaunch b2b bridge.launch
+    -----
+    rosrun my_package my_script
+
+For example, to drive in a square, run
+
+    roscore
+    roslaunch b2b bridge.launch
+    rosrun paralympics square.py
+
 # Installing the Maple
 
 This was hard.
@@ -38,3 +53,17 @@ There you go! Everything should work now.
 ## Update: Bridge to Bot
 
 Please see the b2b package for new instructions on how to connect to the Maple. It replaces the rosserial_python run.
+
+# ROS Packages Used
+
+Actual:
+* rosserial
+* smach
+* numpy/scipy
+* OpenCV
+
+Proposed:
+* navigation
+    * LaserScan
+    * Odometry
+* tf

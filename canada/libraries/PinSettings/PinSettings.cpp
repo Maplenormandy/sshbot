@@ -18,9 +18,10 @@ void pinSetup(void)
     pinMode(ENC_GND, OUTPUT);
     pinMode(ENC_VCC, OUTPUT);
 
-    pinMode(IRSENSORS[0], INPUT);
-    pinMode(IRSENSORS[1], INPUT);
-    pinMode(IRSENSORS[2], INPUT);
+    pinMode(IR_L_FWD, INPUT);
+    pinMode(IR_L_MID, INPUT);
+    pinMode(IR_L_BAK, INPUT);
+    pinMode(IR_FWD, INPUT);
 
     digitalWrite(ENC_GND, LOW);
     digitalWrite(ENC_VCC, HIGH);
