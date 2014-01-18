@@ -7,9 +7,11 @@ project(profit)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
+  rospy
   std_msgs
   tf
   cv_bridge
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -47,11 +49,11 @@ find_package(OpenCV)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  Ball.msg
+  BallArray.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -68,10 +70,10 @@ find_package(OpenCV)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs#   std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -85,7 +87,7 @@ find_package(OpenCV)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES profit
-#  CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf vision_opencv
+  CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf vision_opencv message_runtime
 #  DEPENDS system_lib
 )
 
@@ -108,10 +110,6 @@ include_directories(
 
 ## Declare a cpp executable
 # add_executable(profit_node src/profit_node.cpp)
-
-add_executable(hough_test src/hough_test.cpp)
-add_dependencies(hough_test ${catkin_EXPORTED_TARGETS})
-target_link_libraries(hough_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

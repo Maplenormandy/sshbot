@@ -6,25 +6,59 @@ import math
 import numpy as np
 from sensor_state import SensorState
 from wallflower import Wallflower
-from std_msgs.msg import Empty
+from profit.msg import BallArray
 from smach import *
 
 class ChaseBalls(SensorState):
-    def __init__(self):
-        SensorState.__init__(self, '/balls', Empty, 0.2)
+    def __init__(self, cmd_vel_pub):
+        SensorState.__init__(self, '/balls', BallArray, 0.2)
+        self._cmd_vel = cmd_vel_pub
+
+    def execute(self, ud):
+        self.xl = 0.0
+        self.rl = 0.0
+        self.lostframes = 0
+        self.vel = Twist()
+        return SensorState.execute(self, ud)
 
     def loop(self, msg, ud):
-        # TODO Chase Balls
-        pass
+        if len(msg.balls)==0:
+            self.lostframes += 1
+            if self.lostframes > 24:
+                return 'succeeded'
+            else:
+                self.vel.linear.x *= 0.25
+                self.vel.angular.z *= 0.3
+
+        else:
+            maxScore = 0.0
+            maxBall = None
+            for ball in msg.balls:
+                score = ball.y + abs(ball.x)*0.2 + ball.r
+                if score > maxScore:
+                    maxScore = score
+                    maxBall = ball
+
+            maxBall.x = maxBall.x*0.9 + self.xl*0.1
+            maxBall.r = maxBall.r*0.5 + self.rl*0.5
+
+            self.xl = maxBall.x
+            self.rl = maxBall.r
+
+            self.vel.linear.x = self.vel.linear.x*0.5 + 0.025
+            self.vel.angular.z = self.vel.angular.z*0.5 - maxBall.x*0.25
+
+            self._cmd_vel.publish(self.vel)
+
 
 class WatchBalls(SensorState):
     def __init__(self):
-        SensorState.__init__(self, '/balls', Empty, 0.2,
+        SensorState.__init__(self, '/balls', BallArray, 0.2,
                 outcomes=['found_ball'])
 
     def loop(self, msg, ud):
-        # TODO Check if any balls were watched
-        pass
+        if len(msg.balls)>0:
+           return 'found_ball'
 
 def main():
     rospy.init_node('mach_one')
@@ -65,7 +99,7 @@ def main():
                 remapping={'msg_ball_in':'msg_ball_out',
                            'msg_ball_out':'msg_ball_in'})
 
-        StateMachine.add('CHASE_BALLS', ChaseBalls(),
+        StateMachine.add('CHASE_BALLS', ChaseBalls(cmd_vel),
                 transitions={'succeeded':'WALLFLOWER_CC',
                              'aborted':'WALLFLOWER_CC'},
                 remapping={'msg_in':'msg_ball_out',
