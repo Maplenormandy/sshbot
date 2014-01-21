@@ -21,13 +21,20 @@ class FindWall(SensorState):
 
 
     def loop(self, msg, ud):
-        if msg.l.mid < 0.20:
+        if msg.l.mid < 0.10:
+            return 'found_wall'
+
+        if msg.fwd < 0.10:
             return 'found_wall'
 
         vel = Twist()
 
-        vel.linear.x = np.clip(msg.l.mid*2-0.32, 0.02, 0.1)
-        vel.angular.z = np.clip(0.60-msg.l.mid, 0.4, 0.2)
+        if msg.l.mid < 0.20:
+            vel.linear.x = np.clip(0.20-msg.l.mid, 0.00, 0.06)
+            vel.angular.z = np.clip(0.4-msg.l.mid, 0.05, 0.4)
+        else:
+            vel.linear.x = 0.03
+            vel.angular.z = -0.4
 
         self._cmd_vel.publish(vel)
 
@@ -45,28 +52,31 @@ class Cruise(SensorState):
         return SensorState.execute(self, ud)
 
     def loop(self, msg, ud):
-        if msg.l.fwd > 0.29:
-            return 'lost_wall'
 
         vel = Twist()
 
-        lf = msg.l.fwd - 0.22
-        lf = 0.2*lf + 0.8*self.lfl
-        self.lfl = lf
-        # TODO better integration and diff
-        self.lfi += lf * 0.045
-        lfd = (lf-self.lfl) / 0.045
-        lfd = lfd*0.2 + self.lfdl*0.8
-        self.lfdl = lfd
-
-        if lf < 0:
-            vel.linear.x = 0.2 + lf*2.0
+        if msg.fwd < 0.10:
+            vel.angular.z = -0.2
+        elif msg.l.fwd > 0.29:
+            return 'lost_wall'
         else:
-            vel.linear.x = np.clip(0.2 - lf*2.0, 0, 0.2)
+            lf = np.clip(msg.l.fwd, 0.05, 0.65) - 0.16
+            lf = 0.2*lf + 0.8*self.lfl
+            self.lfl = lf
+            # TODO better integration and diff
+            self.lfi += lf * 0.045
+            lfd = (lf-self.lfl) / 0.045
+            lfd = lfd*0.2 + self.lfdl*0.8
+            self.lfdl = lfd
 
-        cmd = lf*4.0 + self.lfi*0.0 + lfd*1.0
+            if lf < 0:
+                vel.linear.x = 0.05 + lf/2.0
+            else:
+                vel.linear.x = np.clip(0.05 - lf/2.0, 0, 0.05)
 
-        vel.angular.z = np.clip(cmd, -0.8, 0.8)
+            cmd = lf*1.0 + self.lfi*0.0 + lfd*0.25
+
+            vel.angular.z = np.clip(cmd, -0.2, 0.2)
 
         self._cmd_vel.publish(vel)
 
