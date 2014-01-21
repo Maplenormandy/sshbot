@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="transform_configuration_pkg" type="transform_configuration_type" name="transform_configuration_name" output="screen">
+  </node>
+</launch>
