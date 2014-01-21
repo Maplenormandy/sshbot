@@ -20,7 +20,7 @@ costmap_common_params.yaml
 
 Topics:
     Out:
-        goal_dist
+        goal_cost (goal_dist may not reflect our progress in achieving the goal pose)
         cmd_vel
     In:
         ball_pos
