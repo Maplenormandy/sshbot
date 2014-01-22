@@ -20,10 +20,16 @@ class BallSeeingEye:
     RED = [[0,   10,  .3, .95, .2, .95],
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[50, 71, .17, .8, .1, .8]]
-
+    BLUE = [95, 125,  .15, .7, .1, .9]
+    YELLOW = [20, 35, .6,  .8, .4, .95]
+    COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
+    
     def __init__(self, ballCb=print, wallCb=print,
             camera=1, debug=False, quickstart = False):
         self.cap = cv2.VideoCapture(camera)
+        
+        print(self.cap)
+        
         self.cap.set(3,self.DESIRED_WIDTH)
         self.cap.set(4,self.DESIRED_HEIGHT)
 
@@ -54,20 +60,25 @@ class BallSeeingEye:
     def loop(self):
         ret, orig = self.cap.read()
         frame = orig.copy()
-
         crop = frame.copy()[(self.HEIGHT/2):,:]
-        blur = cv2.blur(crop, (self.BLUR,self.BLUR))
-        hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-
-        if self.findBalls:
-            ballsList = self.ballsFind(hsv, frame)
-            self.ballCb(ballsList)
-
-            # Final list of Balls as a list of [x, y, r, colour]
-            # print ballsList
-
-        if self.debug:
-            cv2.imshow('FullImage', frame)
+        blur = cv2.blur(crop, (self.BLUR, self.BLUR))
+        
+        if not blur == None:
+            hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+    
+            if self.findBalls:
+                ballsList = self.ballsFind(hsv, frame)
+                self.ballCb(ballsList)
+    
+                # Final list of Balls as a list of [x, y, r, colour]
+                # print ballsList
+    
+            if self.findWalls:
+                wallsList = self.wallsFind(hsv, frame)
+                print(wallsList)
+                
+            if self.debug:
+                cv2.imshow('FullImage', frame)
 
         return False
 
@@ -102,17 +113,22 @@ class BallSeeingEye:
                     ballsList.append((x, y, r, thresholdImg[1]))
 
                     if self.debug:
-                        cv2.circle(frame, (cx, cy+self.HEIGHT/2), int(r), (0, 255, 0), 1)
+                        cv2.circle(frame, 
+                            (cx, cy+self.HEIGHT/2), int(r), (0, 255, 0), 1)
         if self.debug:
             cv2.imshow('Threshold', thresholdRed)
 
         return ballsList
-
+        
+    def wallsFind(self, img, frame):
+        print("Time to Find some Walls!")
+        return "Wall!"
+        
     def threshold(self, colour, img):
         hsv = img.copy()
         if colour == 'R':
-            l = self.RED[0]
-            u = self.RED[1]
+            l = self.COLOURS[colour][0]
+            u = self.COLOURS[colour][1]
             lower_red1 = np.array([l[0],255*l[2],255*l[4]])
             upper_red1 = np.array([l[1],255*l[3],255*l[5]])
             lower_red2 = np.array([u[0],255*u[2],255*u[4]])
@@ -120,12 +136,11 @@ class BallSeeingEye:
             src1 = cv2.inRange(hsv, lower_red1, upper_red1)
             src2 = cv2.inRange(hsv, lower_red2, upper_red2)
             return cv2.bitwise_or(src1, src2)
-
-        if colour == 'G':
-            l = self.GREEN[0]
-            lower_green = np.array([l[0],255*l[2],255*l[4]])
-            upper_green = np.array([l[1],255*l[3],255*l[5]])
-            return cv2.inRange(hsv, lower_green, upper_green)
+        else:
+            l = self.COLOURS[colour][0]
+            lower_thresh = np.array([l[0],255*l[2],255*l[4]])
+            upper_thresh = np.array([l[1],255*l[3],255*l[5]])
+            return cv2.inRange(hsv, lower_thresh, upper_thresh)
 
 if __name__ == '__main__':
     args = sys.argv
