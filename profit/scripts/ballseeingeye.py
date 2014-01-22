@@ -20,8 +20,8 @@ class BallSeeingEye:
     RED = [[0,   10,  .3, .95, .2, .95],
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[50, 71, .17, .8, .1, .8]]
-    BLUE = [95, 125,  .15, .7, .1, .9]
-    YELLOW = [20, 35, .6,  .8, .4, .95]
+    BLUE = [[90, 128,  .15, .6, .1, .9]]
+    YELLOW = [[20, 35, .6,  .8, .4, .95]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
     
     def __init__(self, ballCb=print, wallCb=print,
@@ -119,10 +119,62 @@ class BallSeeingEye:
             cv2.imshow('Threshold', thresholdRed)
 
         return ballsList
-        
+    
     def wallsFind(self, img, frame):
-        print("Time to Find some Walls!")
-        return "Wall!"
+        hsv = img.copy()
+        thresholdBlue = self.threshold('B', hsv)
+        
+        if self.debug:
+            cv2.imshow('thresholdBlue', thresholdBlue)
+            
+        contours, hierarchy = cv2.findContours(thresholdBlue, 1, 1)
+        
+        area = 0;
+        contour = None
+        for cnt in contours:
+            a = cv2.contourArea(cnt)
+            if a > area:
+                area = a
+                contour = cnt
+        
+        if not contour == None:
+        
+            # Draws the center line of the wall
+            line = cv2.fitLine(contour, 1, 0, 0.01, 0.01)
+            m = line[1]/line[0]
+            b = line[3]-m*line[2]
+            pt1 = (0, b + self.HEIGHT/2)
+            pt2 = (self.WIDTH,m*self.WIDTH + b + self.HEIGHT/2)
+        
+            # Sorts the points into upper and lower
+            upper = []
+            lower = []
+            for pt in contour:
+                if m*pt[0][0]+b > pt[0][1]:
+                    upper.append((pt[0][0], pt[0][1]))
+                else:
+                    lower.append((pt[0][0], pt[0][1]))
+    
+            # Find the upper line
+            if len(upper) > 1:
+                upperline = cv2.fitLine(np.array(upper), 1, 0, 0.01, 0.01)
+    
+                mu = upperline[1]/upperline[0]
+                bu = upperline[3]-mu*upperline[2]
+                pt1u = (0, bu + self.HEIGHT/2)
+                pt2u = (self.WIDTH,mu*self.WIDTH + bu + self.HEIGHT/2)
+                cv2.line(frame, pt1u, pt2u, (0, 0, 255))
+            
+            # Find the lower line
+            if len(lower) > 1:
+                lowerline = cv2.fitLine(np.array(lower), 1, 0, 0.01, 0.01)
+                ml = lowerline[1]/lowerline[0]
+                bl = lowerline[3]-ml*lowerline[2]
+                pt1l = (0, bl + self.HEIGHT/2)
+                pt2l = (self.WIDTH,ml*self.WIDTH + bl + self.HEIGHT/2)
+                cv2.line(frame, pt1l, pt2l, (0, 0, 255))
+
+        return "wall!"
         
     def threshold(self, colour, img):
         hsv = img.copy()
