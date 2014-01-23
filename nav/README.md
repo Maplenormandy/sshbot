@@ -3,7 +3,7 @@ Navigation
 
 Stores and updates map and pose estimate information.  Also manages min-cost queries using a service that takes an array of objects to visit (in order). TO run, simply use
 
-    roslaunch nav nav.launch
+    roslaunch nav move_base.launch
 
 Current features are:
 
