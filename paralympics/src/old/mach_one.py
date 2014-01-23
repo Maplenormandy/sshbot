@@ -44,6 +44,7 @@ class ChaseBalls(SensorState):
 
             self.xl = maxBall.x
             self.rl = maxBall.r
+    balls = []
 
             self.vel.linear.x = self.vel.linear.x*0.5 + 0.025
             self.vel.angular.z = self.vel.angular.z*0.5 - maxBall.x*0.25

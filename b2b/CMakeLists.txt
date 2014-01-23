@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   nav_msgs
   sensor_msgs
-  #std_msgs
+  std_msgs
   tf
   message_generation
 )
@@ -55,11 +55,11 @@ find_package(catkin REQUIRED COMPONENTS
  )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  GreenBallService.srv
+  BallDump.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(

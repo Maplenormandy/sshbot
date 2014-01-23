@@ -2,21 +2,24 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped
+from std_msgs.msg import String, UInt16
 import math
 import numpy as np
 from sensor_state import SensorState
-from wallflower import Wallflower
 from profit.msg import BallArray
 from smach import *
 from smach_ros import *
 from rospy_tutorials.srv import *
+import thread
+import threading
 
-__all__ = ['InitState']
+__all__ = ['InitSystems']
 
 @cb_interface(
         input_keys=['x','y'],
         output_keys=['sum'],
-        outcomes=['succeeded', 'aborted'])
+        outcomes=['succeeded', 'preempted', 'aborted']
+        )
 def sort_reactors(ud):
     rospy.wait_for_service('add_two_ints')
     try:
@@ -33,9 +36,7 @@ def botclient_init(ud):
     rospy.sleep(1.0)
     return 'succeeded'
 
-
-
-class InitState(Concurrence):
+class InitSystems(Concurrence):
     def __init__(self):
         Concurrence.__init__(self,
                 output_keys=['total_dist'],
@@ -50,6 +51,7 @@ class InitState(Concurrence):
         with self:
             Concurrence.add('SORT_REACTORS',
                     CBState(sort_reactors),
+    # TODO Threading business
                     remapping={'x':'dist1',
                                'y':'dist2',
                                'sum':'total_dist'}
@@ -71,3 +73,20 @@ class InitState(Concurrence):
             return 'aborted'
         else:
             return 'succeeded'
+
+
+
+
+def main():
+    rospy.init_node('systemtest')
+    sm_root = StateMachine(outcomes=['succeeded', 'preempted', 'aborted'])
+    sm_root.userdata.msg_in = None
+
+    with sm_root:
+        StateMachine.add('BALL_HANDLER', BallHandler())
+
+    sm_root.execute()
+
+
+if __name__=='__main__':
+    main()

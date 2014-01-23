@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   tf
-  genmsg
   message_generation
 )
 
@@ -48,17 +47,16 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  IRArray.msg
-  IRStamped.msg
-)
+# add_message_files(
+#   FILES
+#   IRArray.msg
+#   IRStamped.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
 #   FILES
-#   Service1.srv
-#   Service2.srv
+#   BallService.srv
 # )
 
 ## Generate actions in the 'action' folder
@@ -68,10 +66,11 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  actionlib_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   actionlib_msgs
+#   std_msgs
+# )
 
 ###################################
 ## catkin specific configuration ##
