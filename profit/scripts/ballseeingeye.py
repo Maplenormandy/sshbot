@@ -20,8 +20,8 @@ class BallSeeingEye:
     RED = [[0,   10,  .3, .95, .2, .95],
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[50, 71, .17, .8, .1, .8]]
-    BLUE = [95, 125,  .15, .7, .1, .9]
-    YELLOW = [20, 35, .6,  .8, .4, .95]
+    BLUE = [[90, 140,  .15, .6, .1, .9]]
+    YELLOW = [[20, 35, .6,  .8, .4, .95]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
     
     def __init__(self, ballCb=print, wallCb=print,
@@ -60,12 +60,13 @@ class BallSeeingEye:
     def loop(self):
         ret, orig = self.cap.read()
         frame = orig.copy()
+        
         crop = frame.copy()[(self.HEIGHT/2):,:]
         blur = cv2.blur(crop, (self.BLUR, self.BLUR))
         
         if not blur == None:
             hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-    
+            
             if self.findBalls:
                 ballsList = self.ballsFind(hsv, frame)
                 self.ballCb(ballsList)
@@ -115,15 +116,55 @@ class BallSeeingEye:
                     if self.debug:
                         cv2.circle(frame, 
                             (cx, cy+self.HEIGHT/2), int(r), (0, 255, 0), 1)
+        
         if self.debug:
             cv2.imshow('Threshold', thresholdRed)
 
         return ballsList
-        
+    
     def wallsFind(self, img, frame):
-        print("Time to Find some Walls!")
-        return "Wall!"
+        hsv = img.copy()
+        thresholdBlue = self.threshold('B', hsv)
         
+        if self.debug:
+            cv2.imshow('thresholdBlue', thresholdBlue)
+            
+        contours, hierarchy = cv2.findContours(thresholdBlue, 1, 1)
+        
+        area = 0;
+        contour = None
+        for cnt in contours:
+            a = cv2.contourArea(cnt)
+            if a > area:
+                area = a
+                contour = cnt
+        
+        if not contour == None:
+        
+            # Draws the center line of the wall
+            m, b = self.getLine(np.array(contour), frame, (0,0,0))
+        
+            # Sorts the points into upper and lower
+            upper = []
+            lower = []
+            for pt in contour:
+                if m*pt[0][0]+b > pt[0][1]:
+                    upper.append((pt[0][0], pt[0][1]))
+                else:
+                    lower.append((pt[0][0], pt[0][1]))
+    
+            mu, bu = self.getLine(np.array(upper), frame)
+            ml, bl = self.getLine(np.array(lower), frame)
+            
+            leftSeg = bl - bu
+            rightSeg = (ml*WIDTH + bl) - (mu*WIDTH + bu)
+            return [leftSeg, rightSeg, 'b']
+            
+        return None
+        
+    ### VHFMA - Various Helping for My Amusement
+    
+    # Returns a thresholded b/w image of the color
     def threshold(self, colour, img):
         hsv = img.copy()
         if colour == 'R':
@@ -141,7 +182,22 @@ class BallSeeingEye:
             lower_thresh = np.array([l[0],255*l[2],255*l[4]])
             upper_thresh = np.array([l[1],255*l[3],255*l[5]])
             return cv2.inRange(hsv, lower_thresh, upper_thresh)
-
+    
+    # Returns m, b, upon taking in a numpy set of points & frame to draw on
+    def getLine(self, points, frame, color=(0, 0, 255)):
+        if len(points) > 0:
+            upperline = cv2.fitLine(points, 1, 0, 0.01, 0.01)
+            m = upperline[1]/upperline[0]
+            b = upperline[3]-m*upperline[2]
+            
+            if self.debug:
+                pt1 = (0, b + self.HEIGHT/2)
+                pt2 = (self.WIDTH,m*self.WIDTH + b + self.HEIGHT/2)
+                cv2.line(frame, pt1, pt2, color)
+            return m, b
+        else:
+            return 0, 0
+                
 if __name__ == '__main__':
     args = sys.argv
     bse = BallSeeingEye(
