@@ -3,6 +3,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <b2b/IRStamped.h>
 
 ros::Publisher* p_odom_pub;
 tf::TransformBroadcaster* p_odom_broadcaster;
@@ -54,11 +55,93 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
     p_odom_pub->publish(odom);
 }
 
-void irToLaser(const IRStamped& msg)
+void irToLaser(const b2b::IRStamped &msg)
 {
+
+    //=======Front Right IR========
+    //since all odometry is 6DOF we'll need a quaternion created from yaw
+    geometry_msgs::Quaternion frquat =
+        tf::createQuaternionMsgFromYaw(0.0);
+
+    //first, we'll publish the transform over tf
+    geometry_msgs::TransformStamped frscan_trans;
+    frscan_trans.header.stamp = msg.header.stamp;
+    frscan_trans.header.seq = msg.header.seq;
+    frscan_trans.header.frame_id = "frscan";
+    frscan_trans.child_frame_id = "base_link";
+
+    // Get transformation from odom coordinates. Note that the odom_partial
+    // message is strange.
+    frscan_trans.transform.translation.x = 0.05; //TODO
+    frscan_trans.transform.translation.y = 0.07; //TODO
+    frscan_trans.transform.translation.z = 0.0;
+    frscan_trans.transform.rotation = frquat;
+
+    //send the transform
+    p_scan_broadcaster->sendTransform(frscan_trans);
+    
+    sensor_msgs::LaserScan frscan;
+    frscan.header.stamp = msg.header.stamp;
+    frscan.header.frame_id = "frscan";
+    frscan.angle_min = 0.0;//TODO
+    frscan.angle_max = 0.0;//TODO
+    frscan.angle_increment = 0.0;//TODO
+    frscan.time_increment = 0.0;
+    frscan.scan_time = .045;
+    frscan.range_min = 0.1;
+    frscan.range_max = 0.8;
+
+    frscan.ranges.resize(1);
+    frscan.intensities.resize(1);
+    frscan.ranges[0] = msg.fwd_r;
+    //publish the message
+    p_scan_pub->publish(frscan);
+
+
+    //=======Front Left IR========
+    //since all odometry is 6DOF we'll need a quaternion created from yaw
+    geometry_msgs::Quaternion flquat =
+        tf::createQuaternionMsgFromYaw(0.0);
+
+    //first, we'll publish the transform over tf
+    geometry_msgs::TransformStamped flscan_trans;
+    flscan_trans.header.stamp = msg.header.stamp;
+    flscan_trans.header.seq = msg.header.seq;
+    flscan_trans.header.frame_id = "flscan";
+    flscan_trans.child_frame_id = "base_link";
+
+    // Get transformation from odom coordinates. Note that the odom_partial
+    // message is strange.
+    flscan_trans.transform.translation.x = -0.05; //TODO
+    flscan_trans.transform.translation.y = 0.07; //TODO
+    flscan_trans.transform.translation.z = 0.0;
+    flscan_trans.transform.rotation = flquat;
+
+    //send the transform
+    p_scan_broadcaster->sendTransform(flscan_trans);
+    
+    sensor_msgs::LaserScan flscan;
+    flscan.header.stamp = msg.header.stamp;
+    flscan.header.frame_id = "flscan";
+    flscan.angle_min = 0.0;//TODO
+    flscan.angle_max = 0.0;//TODO
+    flscan.angle_increment = 0.0;//TODO
+    flscan.time_increment = 0.0;
+    flscan.scan_time = .045;
+    flscan.range_min = 0.1;
+    flscan.range_max = 0.8;
+    
+    flscan.ranges.resize(1);
+    flscan.intensities.resize(1);
+    flscan.ranges[0] = msg.fwd_l;
+    //publish the message
+    p_scan_pub->publish(flscan);
+
+
+    //=======Left IR========
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion lquat =
-        tf::createQuaternionMsgFromYaw(msg.twist.linear.z);
+        tf::createQuaternionMsgFromYaw(0.0);
 
     //first, we'll publish the transform over tf
     geometry_msgs::TransformStamped lscan_trans;
@@ -77,28 +160,6 @@ void irToLaser(const IRStamped& msg)
     //send the transform
     p_scan_broadcaster->sendTransform(lscan_trans);
 
-    //since all odometry is 6DOF we'll need a quaternion created from yaw
-    geometry_msgs::Quaternion rquat =
-        tf::createQuaternionMsgFromYaw(msg.twist.linear.z);
-
-    //first, we'll publish the transform over tf
-    geometry_msgs::TransformStamped rscan_trans;
-    rscan_trans.header.stamp = msg.header.stamp;
-    rscan_trans.header.seq = msg.header.seq;
-    rscan_trans.header.frame_id = "rscan";
-    rscan_trans.child_frame_id = "base_link";
-
-    // Get transformation from odom coordinates. Note that the odom_partial
-    // message is strange.
-    rscan_trans.transform.translation.x = 0.05; //TODO
-    rscan_trans.transform.translation.y = 0.0; //TODO
-    rscan_trans.transform.translation.z = 0.0;
-    rscan_trans.transform.rotation = lquat;
-
-    //send the transform
-    p_scan_broadcaster->sendTransform(rscan_trans);
-
-
     sensor_msgs::LaserScan lscan;
     lscan.header.stamp = msg.header.stamp;
     lscan.header.frame_id = "lscan";
@@ -116,7 +177,30 @@ void irToLaser(const IRStamped& msg)
     lscan.ranges[1] = msg.l.mid;
     lscan.ranges[2] = msg.l.bak;
     //publish the message
-    p_scan_pub.publish(lscan);
+    p_scan_pub->publish(lscan);
+
+
+    //=======Right IR========
+    //since all odometry is 6DOF we'll need a quaternion created from yaw
+    geometry_msgs::Quaternion rquat =
+        tf::createQuaternionMsgFromYaw(0.0);
+
+    //first, we'll publish the transform over tf
+    geometry_msgs::TransformStamped rscan_trans;
+    rscan_trans.header.stamp = msg.header.stamp;
+    rscan_trans.header.seq = msg.header.seq;
+    rscan_trans.header.frame_id = "rscan";
+    rscan_trans.child_frame_id = "base_link";
+
+    // Get transformation from odom coordinates. Note that the odom_partial
+    // message is strange.
+    rscan_trans.transform.translation.x = 0.05; //TODO
+    rscan_trans.transform.translation.y = 0.0; //TODO
+    rscan_trans.transform.translation.z = 0.0;
+    rscan_trans.transform.rotation = rquat;
+
+    //send the transform
+    p_scan_broadcaster->sendTransform(rscan_trans);
     
     sensor_msgs::LaserScan rscan;
     rscan.header.stamp = msg.header.stamp;
@@ -135,7 +219,7 @@ void irToLaser(const IRStamped& msg)
     rscan.ranges[1] = msg.r.mid;
     rscan.ranges[2] = msg.r.bak;
     //publish the message
-    p_scan_pub.publish(rscan);
+    p_scan_pub->publish(rscan);
 }
 
 int main(int argc, char** argv)
@@ -144,7 +228,7 @@ int main(int argc, char** argv)
 
     ros::NodeHandle n;
     ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
-    ros::Publisher scan_pub = n.advertise<sensor_msgs::LaserScan>("scan", 50);
+    ros::Publisher scan_pub = n.advertise<sensor_msgs::LaserScan>("scan", 150);
     ros::Subscriber odom_read = n.subscribe("odom_partial", 1000, futzOdom);
     ros::Subscriber scan_read = n.subscribe("ir_raw", 1000, irToLaser);
     

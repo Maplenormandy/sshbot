@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   genmsg
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -84,7 +85,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES paralympics
-#  CATKIN_DEPENDS geometry_msgs rospy sensor_msgs std_msgs tf
+  CATKIN_DEPENDS message_runtime #geometry_msgs rospy sensor_msgs std_msgs tf
 #  DEPENDS system_lib
 )
 
