@@ -16,14 +16,18 @@ class BallSeeingEye:
     DESIRED_WIDTH = 352
     DESIRED_HEIGHT = 288
     SLEEP = 20
+    
+    WALL_LOOKAHEAD_BOUNDARY = 10  # cap the edges of the camera
+    WALL_EDGE_THRESHOLD = 10      # cap the edges of the walls
 
-    # Colour Theshold Values (MAX). H(180), S(1), V(1).
+    # Colour Theshold Values (OUT OF). H(180), S(1), V(1).
     RED = [[0,   10,  .3, .95, .2, .95],
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[50, 71, .17, .8, .1, .8]]
-    BLUE = [[90, 140,  .15, .6, .1, .9]]
-    YELLOW = [[10, 40, .6,  .8, .4, .95]]
+    BLUE = [[90, 140,  .15, .8, .1, .9]]
+    YELLOW = [[10, 40, .3,  .9, .3, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
+    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0)}
     
     def __init__(self, ballCb=print, wallCb=print,
             camera=1, debug=False, quickstart = False):
@@ -80,8 +84,15 @@ class BallSeeingEye:
                 self.ballCb(ballsList)
     
             if self.findWalls:
+                # Find Yellow Walls
                 wallsList = self.wallsFind(hsv, frame, 'Y')
-                print(wallsList)
+                if not wallsList == None:
+                    print(wallsList)
+                
+                # Find Blue Walls
+                wallsList = self.wallsFind(hsv, frame)
+                if not wallsList == None:
+                    print(wallsList)
                 
             if self.debug:
                 cv2.imshow('FullImage', frame)
@@ -122,9 +133,6 @@ class BallSeeingEye:
                     if self.debug:
                         cv2.circle(frame, 
                             (cx, cy+self.HEIGHT/2), int(r), (0, 255, 0), 1)
-        
-        if self.debug:
-            cv2.imshow('Threshold', thresholdRed)
 
         return ballsList
     
@@ -133,7 +141,7 @@ class BallSeeingEye:
         thresholdColour = self.threshold(colour, hsv)
         
         if self.debug:
-            cv2.imshow('thresholdColour', thresholdColour)
+            cv2.imshow(colour, thresholdColour)
             
         contours, hierarchy = cv2.findContours(thresholdColour, 1, 1)
         
@@ -149,22 +157,45 @@ class BallSeeingEye:
         
             # Draws the center line of the wall
             m, b = self.getLine(np.array(contour), frame, (0,0,0))
-        
+            
+            # Pick the left and right ends of the wall
+            leftMost = self.WIDTH
+            rightMost = 0
+            for pt in contour:
+                if pt[0][0] < leftMost:
+                    leftMost = pt[0][0]
+                if pt[0][0] > rightMost:
+                    rightMost = pt[0][0]
+                    
             # Sorts the points into upper and lower
             upper = []
             lower = []
             for pt in contour:
-                if m*pt[0][0]+b > pt[0][1]:
-                    upper.append((pt[0][0], pt[0][1]))
-                else:
-                    lower.append((pt[0][0], pt[0][1]))
+                if (pt[0][0] > self.WALL_LOOKAHEAD_BOUNDARY and 
+                        pt[0][0] < self.WIDTH - self.WALL_LOOKAHEAD_BOUNDARY and
+                        pt[0][0] - leftMost > self.WALL_EDGE_THRESHOLD and 
+                        rightMost - pt[0][0] > self.WALL_EDGE_THRESHOLD):
+                    if m*pt[0][0]+b > pt[0][1]:
+                        upper.append((pt[0][0], pt[0][1]))
+                    else:
+                        lower.append((pt[0][0], pt[0][1]))
     
-            mu, bu = self.getLine(np.array(upper), frame)
-            ml, bl = self.getLine(np.array(lower), frame)
+            mu, bu = self.getLine(np.array(upper), frame, self.LINE_COLOURS[colour])
+            ml, bl = self.getLine(np.array(lower), frame, self.LINE_COLOURS[colour])
             
-            leftSeg = bl - bu
-            rightSeg = (ml*self.WIDTH + bl) - (mu*self.WIDTH + bu)
-            return [leftSeg, rightSeg, 'b']
+            topLeft = (np.array(leftMost), np.array(mu * leftMost + bu + self.HEIGHT/2))
+            bottomLeft = (np.array(leftMost), np.array(ml * leftMost + bl + self.HEIGHT/2))
+            topRight = (np.array(rightMost), np.array(mu * rightMost + bu + self.HEIGHT/2))
+            bottomRight = (np.array(rightMost), np.array(ml * rightMost + bl + self.HEIGHT/2))
+            
+            # Better than a random number generator, I promise.
+            confidence = max(1 - abs(mu-ml) - abs(mu)*0.5 - (300/area), 0)
+            
+            if self.debug:
+                cv2.line(frame, topLeft, bottomLeft, self.LINE_COLOURS[colour])
+                cv2.line(frame, topRight, bottomRight, self.LINE_COLOURS[colour])
+
+            return [colour, topLeft, topRight, bottomRight, bottomLeft, confidence]
             
         return None
         
@@ -193,15 +224,17 @@ class BallSeeingEye:
     def getLine(self, points, frame, color=(0, 0, 255)):
         if len(points) > 0:
             upperline = cv2.fitLine(points, 1, 0, 0.01, 0.01)
-            m = upperline[1]/upperline[0]
-            b = upperline[3]-m*upperline[2]
             
-            print(m)
+            # shim to prevent divide by zero
+            upperline[0] = max(upperline[0], 0.0001)
+            m = (upperline[1]/upperline[0])
+            b = (upperline[3]-m*upperline[2])
+            
             if self.debug:
                 pt1 = (0, b + self.HEIGHT/2)
                 pt2 = (self.WIDTH,m*self.WIDTH + b + self.HEIGHT/2)
                 cv2.line(frame, pt1, pt2, color)
-            return m, b
+            return m[0], b[0]
         else:
             return 0, 0
                 
