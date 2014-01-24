@@ -5,6 +5,7 @@
 #include <SensorTimer.h>
 #include <PinSettings.h>
 
+#include <stdlib.h>
 #include <ros.h>
 
 #include "geometry_msgs/Twist.h"

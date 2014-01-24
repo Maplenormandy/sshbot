@@ -4,20 +4,86 @@
 #include <SensorTimer.h>
 #include <DifferentialDrive.h>
 #include <IRSensor.h>
+#include <Servo.h>
 
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Empty.h>
+#include <std_msgs/Int16.h>
 
 std_msgs::String str_msg;
-std_msgs::Float32 front_msg;
 
 ros::NodeHandle nh;
 ros::Publisher chatter("chatter", &str_msg);
 
 DifferentialDrive dd;
 IRSuite irs;
+
+void odom_reset_cb(const std_msgs::Empty& msg)
+{
+    dd.reset();
+}
+ros::Subscriber<std_msgs::Empty> odom_reset("odom_reset", &odom_reset_cb);
+
+void sas_cmd_cb(const std_msgs::Float32& msg)
+{
+    uint16 pwm = (uint16) constrain(abs(msg.data), 0, 65535);
+    uint8 dir = msg.data < 0.0f ? HIGH : LOW;
+
+    digitalWrite(SAS_DIR, dir);
+    pwmWrite(SAS_PWM, pwm);
+}
+ros::Subscriber<std_msgs::Float32> sas_cmd("sas_cmd", &sas_cmd_cb);
+
+void roller_cmd_cb(const std_msgs::Float32& msg)
+{
+    uint16 pwm = (uint16) constrain(abs(msg.data), 0, 65535);
+    uint8 dir = msg.data < 0.0f ? HIGH : LOW;
+
+    digitalWrite(ROLLER_DIR, dir);
+    pwmWrite(ROLLER_PWM, pwm);
+}
+ros::Subscriber<std_msgs::Float32> roller_cmd("roller_cmd", &roller_cmd_cb);
+
+void screw_cmd_cb(const std_msgs::Float32& msg)
+{
+    uint16 pwm = (uint16) constrain(abs(msg.data), 0, 65535);
+    uint8 dir = msg.data < 0.0f ? HIGH : LOW;
+
+    digitalWrite(SCREW_DIR, dir);
+    pwmWrite(SCREW_PWM, pwm);
+}
+ros::Subscriber<std_msgs::Float32> screw_cmd("screw_cmd", &screw_cmd_cb);
+
+Servo kick;
+void kick_cmd_cb(const std_msgs::Int16& msg)
+{
+    kick.write(msg.data);
+}
+ros::Subscriber<std_msgs::Int16> kick_cmd("kick_cmd", &kick_cmd_cb);
+
+Servo pac;
+void pac_cmd_cb(const std_msgs::Int16& msg)
+{
+    pac.write(msg.data);
+}
+ros::Subscriber<std_msgs::Int16> pac_cmd("pac_cmd", &pac_cmd_cb);
+
+Servo gate_g;
+void gate_g_cmd_cb(const std_msgs::Int16& msg)
+{
+    gate_g.write(msg.data);
+}
+ros::Subscriber<std_msgs::Int16> gate_g_cmd("gate_g_cmd", &gate_g_cmd_cb);
+
+Servo gate_r;
+void gate_r_cmd_cb(const std_msgs::Int16& msg)
+{
+    gate_r.write(msg.data);
+}
+ros::Subscriber<std_msgs::Int16> gate_r_cmd("gate_r_cmd", &gate_r_cmd_cb);
 
 void deb()
 {
@@ -52,15 +118,16 @@ void setup()
             0.1f, 0.8f);
     irs.l.bak.attach(IR_L_BAK);
 
-    irs.fwd.attach(IR_FWD);
-    irs.fwd.calibrate(0.00550560406861f, 0.889300680702f,
+    irs.fwd_l.attach(IR_FWD_L);
+    irs.fwd_l.calibrate(0.00550560406861f, 0.889300680702f,
             0.1f, 0.8f);
 
-    // Dagu motor controller, for front roller
-    pinMode(6, PWM);
-    pinMode(7, OUTPUT);
-    digitalWrite(7, HIGH);
-    analogWrite(6, 40000);
+
+    //digitalWrite(ROLLER_DIR, HIGH);
+    //pwmWrite(ROLLER_PWM, 65535);
+
+    //digitalWrite(SCREW_DIR, HIGH);
+    //pwmWrite(SCREW_PWM, 65535);
     
     dd.reset();
 
@@ -106,3 +173,4 @@ void loop()
         chatter.publish(&str_msg);
     }
 }
+

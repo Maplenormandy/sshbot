@@ -2,7 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, PointStamped, Pose
-from std_msgs.msg import UInt16
+from std_msgs.msg import Int16
 from actionlib_tutorials.msg import FibonacciAction
 import math
 import numpy as np
@@ -144,11 +144,14 @@ class GrabSiloBalls(State):
         self._sas_pub = sas_pub
 
     def execute(self, ud):
-        msg = UInt16()
-        msg.data = 180
+        msg = Float32()
+        msg.data = 0.5
         self._sas_pub.publish(msg)
         rospy.sleep(0.5)
-        msg.data = 0
+        msg.data = -0.5
+        self._sas_pub.publish(msg)
+        rospy.sleep(0.5)
+        msg.data = 0.0
         self._sas_pub.publish(msg)
 
         if self.preempt_requested():
@@ -158,7 +161,7 @@ class GrabSiloBalls(State):
         return 'succeeded'
 
     def request_preempt(self):
-        msg = UInt16()
+        msg = Int16()
         msg.data = 0
         self._sas_pub.publish(msg)
         State.request_preempt(self)
@@ -190,7 +193,7 @@ class DispenserState(StateMachine):
         StateMachine.__init__(self,
                 outcomes=['succeeded', 'preempted', 'aborted'])
 
-        sas_pub = rospy.Publisher('/sas_cmd', UInt16)
+        sas_pub = rospy.Publisher('/sas_cmd', Int16)
         cmd_vel = rospy.Publisher('/cmd_vel', Twist)
 
         with self:
