@@ -23,11 +23,11 @@ class BallSeeingEye:
     # Colour Theshold Values (OUT OF). H(180), S(1), V(1).
     RED = [[0,   10,  .3, .95, .2, .95],
            [170, 180, .3, .73, .3, .9]]
-    GREEN = [[50, 71, .17, .8, .1, .8]]
+    GREEN = [[49, 80, .17, .8, .1, .8]]
     BLUE = [[90, 140,  .15, .8, .1, .9]]
     YELLOW = [[10, 40, .3,  .9, .3, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
-    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0)}
+    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0)}
     
     def __init__(self, ballCb=print, wallCb=print,
             camera=1, debug=False, quickstart = False):
@@ -79,20 +79,32 @@ class BallSeeingEye:
         if not blur == None:
             hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
             
-            if self.findBalls:
-                ballsList = self.ballsFind(hsv, frame)
+            # Find Yellow WALLS
+            wallsList = []
+            forbidden = []
+            yellowWalls = self.wallsFind(hsv, frame, 'Y')
+            if not yellowWalls == None:
+                wallsList.append(yellowWalls)
+            
+            # Find Blue WALLS
+            blueWalls = self.wallsFind(hsv, frame, 'B')
+            if not blueWalls == None:
+                wallsList.append(blueWalls)
+            
+            # Find Red WALLS
+            redWalls = self.wallsFind(hsv, frame, 'R')
+            if not redWalls == None:
+                wallsList.append(redWalls)
+                forbidden.append(redWalls)
+                
+            # Find BALLS
+            ballsList = self.ballsFind(hsv, frame, forbidden)
+            
+            if self.findBalls: 
                 self.ballCb(ballsList)
     
             if self.findWalls:
-                # Find Yellow Walls
-                wallsList = self.wallsFind(hsv, frame, 'Y')
-                if not wallsList == None:
-                    print(wallsList)
-                
-                # Find Blue Walls
-                wallsList = self.wallsFind(hsv, frame)
-                if not wallsList == None:
-                    print(wallsList)
+                self.wallCb(wallsList)
                 
             if self.debug:
                 cv2.imshow('FullImage', frame)
@@ -111,11 +123,14 @@ class BallSeeingEye:
         cv2.destroyAllWindows()
         
     # Returns a list of balls in the format [x, y, r, colour]
-    def ballsFind(self, img, frame):
+    def ballsFind(self, img, frame, forbiddenZone):
         hsv = img.copy()
         thresholdRed = self.threshold('R', hsv)
         thresholdGreen = self.threshold('G', hsv)
-
+        
+        
+        cv2.imshow('G', thresholdGreen)
+        
         ballsList = []
         for thresholdImg in [(thresholdRed, 'r'), (thresholdGreen,'g')]:
             contours, hierarchyRed = cv2.findContours(thresholdImg[0].copy(), 1, 2)
@@ -128,12 +143,30 @@ class BallSeeingEye:
                     x = (cx-self.WIDTH/2.0) / self.HEIGHT
                     y = (cy*1.0) / self.HEIGHT
                     r = (area / 3.14)**0.5 / self.HEIGHT
-                    ballsList.append((x, y, r, thresholdImg[1]))
-
-                    if self.debug:
-                        cv2.circle(frame, 
-                            (cx, cy+self.HEIGHT/2), int(r), (0, 255, 0), 1)
-
+                    
+                    # fitline - check if dot is in forbidden zone (a wall)
+                    # change to function when more awake
+                    
+                    validate = True
+                    
+                    if len(forbiddenZone) > 0:
+                        for fz in forbiddenZone:
+                            m = (fz[1][1] - fz[2][1])/(fz[1][0] - fz[2][0])
+                            b = fz[1][1] - m * fz[1][0]
+                            topY = m * cx + b
+                            m = (fz[3][1] - fz[4][1])/(fz[3][0] - fz[4][0])
+                            b = fz[3][1] - m * fz[3][0]
+                            botY = m * cx + b
+                            if (cy+self.HEIGHT*0.5) > topY and (cy+self.HEIGHT*0.5) < botY:
+                                validate = False
+                        
+                    if validate:
+                        ballsList.append((x, y, r, thresholdImg[1]))
+                        if self.debug:
+                            cv2.circle(frame, 
+                                (cx, cy+self.HEIGHT/2), int(r * self.HEIGHT), (0, 255, 0), 1)
+                        
+        
         return ballsList
     
     def wallsFind(self, img, frame, colour='B'):
@@ -145,7 +178,7 @@ class BallSeeingEye:
             
         contours, hierarchy = cv2.findContours(thresholdColour, 1, 1)
         
-        area = 0;
+        area = 100;
         contour = None
         for cnt in contours:
             a = cv2.contourArea(cnt)
@@ -203,6 +236,7 @@ class BallSeeingEye:
     
     # Returns a thresholded b/w image of the color
     def threshold(self, colour, img):
+
         hsv = img.copy()
         if colour == 'R':
             l = self.COLOURS[colour][0]
