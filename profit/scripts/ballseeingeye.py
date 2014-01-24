@@ -24,10 +24,11 @@ class BallSeeingEye:
     RED = [[0,   10,  .3, .95, .2, .95],
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[49, 80, .17, .8, .1, .8]]
-    BLUE = [[90, 140,  .15, .8, .1, .9]]
+    BLUE = [[100, 140,  .1, .9, .1, .9]]
+    TEAL = [[80, 100,  .1, .9, .1, .9]]
     YELLOW = [[10, 40, .3,  .9, .3, .99]]
-    COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
-    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0)}
+    COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL}
+    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0)}
     
     def __init__(self, ballCb=print, wallCb=print,
             camera=1, debug=False, quickstart = False):
@@ -92,10 +93,16 @@ class BallSeeingEye:
                 wallsList.append(blueWalls)
             
             # Find Red WALLS
-            redWalls = self.wallsFind(hsv, frame, 'R')
-            if not redWalls == None:
-                wallsList.append(redWalls)
-                forbidden.append(redWalls)
+#             redWalls = self.wallsFind(hsv, frame, 'R')
+#             if not redWalls == None:
+#                 wallsList.append(redWalls)
+#                 forbidden.append(redWalls)
+                
+            # Find Teal WALLS
+            tealWalls = self.wallsFind(hsv, frame, 'T')
+            if not tealWalls == None:
+                wallsList.append(tealWalls)
+                forbidden.append(tealWalls)
                 
             # Find BALLS
             ballsList = self.ballsFind(hsv, frame, forbidden)
