@@ -8,6 +8,7 @@ from __future__ import print_function
 import numpy as np
 import cv2
 import sys
+import time
 
 class BallSeeingEye:
     AREA_THRESHOLD = 100
@@ -21,22 +22,24 @@ class BallSeeingEye:
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[50, 71, .17, .8, .1, .8]]
     BLUE = [[90, 140,  .15, .6, .1, .9]]
-    YELLOW = [[20, 35, .6,  .8, .4, .95]]
+    YELLOW = [[10, 40, .6,  .8, .4, .95]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW}
     
     def __init__(self, ballCb=print, wallCb=print,
             camera=1, debug=False, quickstart = False):
         self.cap = cv2.VideoCapture(camera)
-        
-        print(self.cap)
+        print("Setting up camera feed...")
+        time.sleep(1)
         
         self.cap.set(3,self.DESIRED_WIDTH)
         self.cap.set(4,self.DESIRED_HEIGHT)
-
+        print("Configuring size...")
+        time.sleep(1)
+        
         self.WIDTH = int(self.cap.get(3))
         self.HEIGHT = int(self.cap.get(4))
-
-        print(str(self.WIDTH) + 'x' + str(self.HEIGHT))
+        print("Actual Dimensions: " 
+          + str(self.WIDTH) + ", " + str(self.HEIGHT))
 
         # Callbacks for vision code
         self.ballCb = ballCb
@@ -58,10 +61,15 @@ class BallSeeingEye:
         self.findWalls = True
 
     def loop(self):
+        # Read Camera Properties
         ret, orig = self.cap.read()
-        frame = orig.copy()
+        self.WIDTH = int(self.cap.get(3))
+        self.HEIGHT = int(self.cap.get(4))
         
-        crop = frame.copy()[(self.HEIGHT/2):,:]
+        frame = orig.copy()
+        post = frame.copy()
+                  
+        crop = post[(self.HEIGHT/2):,:]
         blur = cv2.blur(crop, (self.BLUR, self.BLUR))
         
         if not blur == None:
@@ -71,11 +79,8 @@ class BallSeeingEye:
                 ballsList = self.ballsFind(hsv, frame)
                 self.ballCb(ballsList)
     
-                # Final list of Balls as a list of [x, y, r, colour]
-                # print ballsList
-    
             if self.findWalls:
-                wallsList = self.wallsFind(hsv, frame)
+                wallsList = self.wallsFind(hsv, frame, 'Y')
                 print(wallsList)
                 
             if self.debug:
@@ -93,7 +98,8 @@ class BallSeeingEye:
 
         self.cap.release()
         cv2.destroyAllWindows()
-
+        
+    # Returns a list of balls in the format [x, y, r, colour]
     def ballsFind(self, img, frame):
         hsv = img.copy()
         thresholdRed = self.threshold('R', hsv)
@@ -122,14 +128,14 @@ class BallSeeingEye:
 
         return ballsList
     
-    def wallsFind(self, img, frame):
+    def wallsFind(self, img, frame, colour='B'):
         hsv = img.copy()
-        thresholdBlue = self.threshold('B', hsv)
+        thresholdColour = self.threshold(colour, hsv)
         
         if self.debug:
-            cv2.imshow('thresholdBlue', thresholdBlue)
+            cv2.imshow('thresholdColour', thresholdColour)
             
-        contours, hierarchy = cv2.findContours(thresholdBlue, 1, 1)
+        contours, hierarchy = cv2.findContours(thresholdColour, 1, 1)
         
         area = 0;
         contour = None
@@ -157,7 +163,7 @@ class BallSeeingEye:
             ml, bl = self.getLine(np.array(lower), frame)
             
             leftSeg = bl - bu
-            rightSeg = (ml*WIDTH + bl) - (mu*WIDTH + bu)
+            rightSeg = (ml*self.WIDTH + bl) - (mu*self.WIDTH + bu)
             return [leftSeg, rightSeg, 'b']
             
         return None
@@ -190,6 +196,7 @@ class BallSeeingEye:
             m = upperline[1]/upperline[0]
             b = upperline[3]-m*upperline[2]
             
+            print(m)
             if self.debug:
                 pt1 = (0, b + self.HEIGHT/2)
                 pt2 = (self.WIDTH,m*self.WIDTH + b + self.HEIGHT/2)
