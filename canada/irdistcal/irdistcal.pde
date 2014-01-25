@@ -1,7 +1,7 @@
 
 void setup()
 {
-    //
+  pinMode(20, INPUT);
 }
 
 void loop()
@@ -12,7 +12,7 @@ void loop()
 
         for (int i = 0; i < 32; ++i)
         {
-            SerialUSB.println(analogRead(15));
+            SerialUSB.println(analogRead(20));
             delay(50+random(0,10));
         }
     }

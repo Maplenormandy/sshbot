@@ -6,22 +6,22 @@
 const double pi = boost::math::constants::pi<double>();
 
 int main(int argc, char** argv){
-  ros::init(argc, argv, "base_link_to_map_tf");
+  ros::init(argc, argv, "tf_broadcaster");
   ros::NodeHandle n;
 
-  ros::Rate r(1.0);
+  ros::Rate r(60);
 
   tf::TransformBroadcaster broadcaster;
 
   while(n.ok()){
     broadcaster.sendTransform(
       tf::StampedTransform(
-        tf::Transform(tf::createQuaternionFromYaw(pi/2.0),
+        tf::Transform(tf::createQuaternionFromYaw(-pi/2.0),
             tf::Vector3(0.02032, -0.0851408, 0.0)),
         ros::Time::now(),"base_link", "rscan"));
     broadcaster.sendTransform(
       tf::StampedTransform(
-        tf::Transform(tf::createQuaternionFromYaw(-pi/2.0),
+        tf::Transform(tf::createQuaternionFromYaw(pi/2.0),
             tf::Vector3(0.02032, 0.0851408, 0.0)),
         ros::Time::now(),"base_link", "lscan"));
 

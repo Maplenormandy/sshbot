@@ -1,0 +1,19 @@
+l.fwd
+slope: 0.00350503838666
+intercept: -0.167469461743
+
+l.mid
+slope: 0.00425276295402
+intercept: -1.36712538613
+
+l.bak
+slope: 0.00403457001339
+intercept: -1.00347364514
+
+r.fwd
+slope: 0.00369894253316
+intercept: -0.975761919236
+
+r.mid
+slope: 0.00502099341859
+intercept: 1.0250432823

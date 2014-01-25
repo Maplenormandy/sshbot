@@ -11,18 +11,47 @@ The username/password for the tablet is sshb:sshb
 
 # How to launch our robot, The Definitive Guide
 
-In separate terminal windows,
+This guide is up to date as of 1/25.
+
+First, since I accidentally updated ROS (really sorry guys!), run
+
+    sudo apt-get update
+    sudo apt-get upgrade
+
+There may be errors with the upgrade. If there are, follow the recommended instructions. I think I had to do something along the lines of
+
+    sudo apt-get -f install
+
+To run the bot, in separate terminals run:
 
     roscore
     roslaunch b2b bridge.launch
-    -----
-    rosrun my_package my_script
 
-For example, to drive in a square, run
+To run the alignment code, run:
 
-    roscore
-    roslaunch b2b bridge.launch
-    rosrun paralympics square.py
+    roslaunch paralympics align_reactor.launch
+
+To run gmapping (SLAM), run:
+
+    roslaunch nav gmap.launch
+
+To run AMCL (localization). Please note this may not actually work as the right IRs are not working. TODO would be to fix msg_parser.cpp in b2b and remove the right IR data and hope it works.
+
+    roslaunch nav move_base.launch
+
+Please note that these three launch files are currently mutually exclusive.
+
+If you want to run on a simulated robot, run
+
+    rosrun b2b pretend_bot.py
+
+Instead of running bridge.launch.
+
+If you want to visualize the odometry/pose of the robot, run
+
+    rosrun rviz rviz
+
+Then add a TF display. Fix it to the map frame to see where the robot thinks it is, or fix it to the odom frame to see where the robot's odometry reports it as being.
 
 # Installing the Maple
 
@@ -49,10 +78,6 @@ Finally, when you want to put a program on the Maple that uses rosserial, look a
 where /dev/ttyACM0 is the Maple USB serial port.
 
 There you go! Everything should work now.
-
-## Update: Bridge to Bot
-
-Please see the b2b package for new instructions on how to connect to the Maple. It replaces the rosserial_python run.
 
 # ROS Packages Used
 

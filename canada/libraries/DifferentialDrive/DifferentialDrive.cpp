@@ -29,6 +29,7 @@ DifferentialDrive::DifferentialDrive() :
     odom("odom_partial", &odom_msg),
     pid_tune("pid_tune", &pidTuneCb),
     cmd_vel("cmd_vel", &cmdCb),
+    overspeed("overspeed", &overspeed_msg),
     st(odom_msg.header)
 {
     encL.attach(ENC_L_A, ENC_L_B);
@@ -117,8 +118,8 @@ void DifferentialDrive::loop(void)
     // Turn commanded velocity to L/R commands
     double sym = cmd_vel_msg.linear.x/wheelR;
     double anti = cmd_vel_msg.angular.z*axleR/wheelR;
-    rdl = sym-anti;
-    rdr = sym+anti;
+    rdl = (sym-anti)/2.0;
+    rdr = (sym+anti)/2.0;
 
     // Integrate velocity command
     rl += rdl*st.dt;
@@ -127,9 +128,7 @@ void DifferentialDrive::loop(void)
     // Saturation
     if (abs(rl-yl)>int_sat || abs(rr-yr)>int_sat)
     {
-        // TODO Overspeed warning
-        //str_msg.data = "Windup";
-        //chatter.publish(&str_msg);
+        overspeed.publish(&overspeed_msg);
     }
     rl = constrain(rl, yl-int_sat,yl+int_sat);
     rr = constrain(rr, yr-int_sat,yr+int_sat);
@@ -140,10 +139,14 @@ void DifferentialDrive::loop(void)
 
     // Output to motors
     // LOW drives forward
-    digitalWrite(MOTOR_L_DIR, outl < 0 ? HIGH : LOW);
-    digitalWrite(MOTOR_R_DIR, outr < 0 ? HIGH : LOW);
+    digitalWrite(MOTOR_L_DIR, outl > 0 ? HIGH : LOW);
+    digitalWrite(MOTOR_R_DIR, outr > 0 ? HIGH : LOW);
     pwmWrite(MOTOR_L_PWM, (uint16) constrain(abs(outl), 0, 65535));
     pwmWrite(MOTOR_R_PWM, (uint16) constrain(abs(outr), 0, 65535));
+    //pwmWrite(MOTOR_L_PWM, (uint16) abs(cmd_vel_msg.linear.x));
+    //pwmWrite(MOTOR_R_PWM, (uint16) abs(cmd_vel_msg.linear.y));
+    //pwmWrite(MOTOR_L_PWM, (uint16) (micros()%65536));
+    //pwmWrite(MOTOR_R_PWM, (uint16) (micros()%65536));
 
     odom.publish(&odom_msg);
 }

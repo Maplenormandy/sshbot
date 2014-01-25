@@ -6,8 +6,7 @@
 
   <include file="$(find nav)/launch/nav.launch" />
 
-  <!--- Run AMCL -->
-  <include file="$(find nav)/launch/amcl_diff.launch" />
+  <node name="slam_gmapping" pkg="gmapping" type="slam_gmapping" />
 
   <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
     <rosparam file="$(find nav)/costmap_common_params.yaml" command="load" ns="global_costmap" />

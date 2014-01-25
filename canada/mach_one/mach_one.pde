@@ -105,6 +105,7 @@ void setup()
     nh.subscribe(dd.cmd_vel);
     nh.subscribe(dd.pid_tune);
     nh.advertise(dd.odom);
+    nh.advertise(dd.overspeed);
 
     irs.l.fwd.calibrate(0.00379680814028f, -0.37963064697f,
             0.1f, 0.8f);
@@ -117,6 +118,16 @@ void setup()
     irs.l.bak.calibrate(0.00363762465628f, -0.0852030557814f,
             0.1f, 0.8f);
     irs.l.bak.attach(IR_L_BAK);
+
+    irs.r.fwd.calibrate(0.00363762465628f, -0.0852030557814f,
+            0.1f, 0.8f);
+    irs.r.fwd.attach(IR_R_FWD);
+    irs.r.mid.calibrate(0.00363762465628f, -0.0852030557814f,
+            0.1f, 0.8f);
+    irs.r.mid.attach(IR_R_MID);
+    irs.r.bak.calibrate(0.00363762465628f, -0.0852030557814f,
+            0.1f, 0.8f);
+    irs.r.bak.attach(IR_R_BAK);
 
     irs.fwd_l.attach(IR_FWD_L);
     irs.fwd_l.calibrate(0.00550560406861f, 0.889300680702f,

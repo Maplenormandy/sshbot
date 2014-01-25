@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('paralympics')
 import rospy
-from geometry_msgs.msg import Twist, Pose
+from geometry_msgs.msg import Twist, Pose, PointStamped
+from std_msgs.msg import Header
 from profit.msg import *
-from std_msgs.msg import UInt16MultiArray
 from move_base_msgs.msg import *
-from actionlib_tutorials.msg import *
 import threading
 import random
 import math
@@ -15,26 +14,66 @@ from profit.msg import BallArray
 from smach import *
 from smach_ros import *
 from actionlib.simple_action_client import SimpleActionClient, GoalStatus
+import tf
 
 __all__ = ['TravelState']
 
 
 class BallTracker(SensorState):
     def __init__(self, move_state, chaser_state):
-        SensorState.__init__(self, '/profit/balls', UInt16MultiArray, 0.2,
-                input_keys=['move_state', 'chaser_state'],
+        SensorState.__init__(self, '/profit/balls', BallArray, 0.2,
                 outcomes=['preempted']
                 )
 
         self.chaser_state = chaser_state
         self.move_state = move_state
 
+        self.tf_listener = tf.TransformListener()
+
     def loop(self, msg, ud):
-        self.chaser_state.balls = list(msg.data)
-        # TODO Fancier ball sorting and stuff
-        self.chaser_state.balls.sort(key=lambda x: -x)
-        self.move_state.found_balls()
-        self.chaser_state.reset_ball_goal()
+        if self.chaser_state.balls == None:
+            self.chaser_state.balls = list(msg.balls)
+            self.chaser_state.ball_header = msg.header
+        else:
+            frames = (
+                    'camera_link', msg.header,
+                    'camera_link', self.chaser_state.ball_header,
+                    'camera_link'
+                    )
+
+            self.tf_listener.waitForTransformFull(*frames)
+            translation, rotation = self.tf_listener.lookupTransformFull(*frames)
+            mat44 = self.tf_listener.fromTranslationRotation(translation, rotation)
+
+            def transformBalls(ball):
+                xyz = tuple(np.dot(mat44,
+                    np.array([ball.x, ball.y, ball.z, 1.0])))[:3]
+                return Point(*xyz)
+
+            old_balls = map(transformBalls, self.chaser_state.balls)
+
+            new_balls = []
+
+            for ball in old_balls:
+                if ball.x / math.hypot(ball.x, ball.y) > math.cos(math.radians(60)):
+                    dists = map(lambda x: math.hypot(ball.x-x.x, ball.y-x.y), msg.balls)
+                    min_index = min(xrange(len(dists)), key=dists.__getitem__)
+                    # Kind of like a low-pass filter
+                    if dists[min_index] < 0.02:
+                        ball2 = balls[min_index]
+                        ball.x = ball.x*0.5 + ball2.x*0.5
+                        ball.y = ball.y*0.5 + ball2.y*0.5
+                        new_balls.append(ball)
+                else:
+                    new_balls.append(ball)
+
+
+            self.chaser_state.balls = sorted(new_balls,
+                    key=lambda ball: -math.hypot(ball.x, ball.y))
+
+            self.chaser_state.ball_header = msg.header
+
+        self.chaser_state.balls
 
 
 class BallChaser(State):
@@ -43,17 +82,20 @@ class BallChaser(State):
                 outcomes=['succeeded', 'no_more_balls', 'preempted', 'aborted']
                 )
 
-        self.balls = []
+        self.balls = None
+        self.ball_header = None
 
         self.action_client = action_client
 
         self._timeout = timeout
         self._trigger_cond = threading.Condition()
 
-        self.goal = FibonacciGoal()
+        self.goal = MoveBaseGoal()
 
 
     def execute(self, ud):
+        self.reset_ball_goal()
+
         while True:
             self._trigger_cond.acquire()
             self._trigger_cond.wait(self._timeout)
@@ -61,7 +103,6 @@ class BallChaser(State):
 
             if self.goal_status == GoalStatus.SUCCEEDED:
                 if len(self.balls)>0:
-                    self.reset_ball_goal()
                     return 'succeeded'
                 else:
                     return 'no_more_balls'
@@ -77,7 +118,8 @@ class BallChaser(State):
         if len(self.balls)>0:
             rospy.loginfo(self.balls)
             self.goal_status = None
-            self.goal.order = self.balls.pop()
+            self.goal.header = self.ball_header
+            self.goal.pose.position = self.balls.pop()
             self.action_client.cancel_goal()
             self.action_client.send_goal(self.goal, self.done_cb)
 

@@ -12,9 +12,10 @@ voltages = np.zeros(0)
 distances = np.zeros(0)
 invdist = np.zeros(0)
 
+# 6, 10, 14, 22
 while True:
-    print "distance (m), negative to quit:",
-    dist = float(input())
+    print "distance (in), negative to quit:",
+    dist = float(input()) * 0.0254
     if dist<0:
         break
 

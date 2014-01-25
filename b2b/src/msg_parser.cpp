@@ -57,7 +57,7 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
 
 struct irFutzer
 {
-    ros::Publisher lscan_pub, rscan_pub, flscan_pub, frscan_pub;
+    ros::Publisher lscan_pub, rscan_pub, flscan_pub, frscan_pub, scan_pub;
     sensor_msgs::LaserScan lscan, rscan, flscan, frscan;
     const double dist_to_ir_center = 0.0513842;
 
@@ -69,6 +69,7 @@ struct irFutzer
         rscan_pub = n.advertise<sensor_msgs::LaserScan>("rscan", 150);
         flscan_pub = n.advertise<sensor_msgs::LaserScan>("flscan", 150);
         frscan_pub = n.advertise<sensor_msgs::LaserScan>("frscan", 150);
+        scan_pub = n.advertise<sensor_msgs::LaserScan>("scan", 150);
 
         frscan.header.frame_id = "frscan";
         frscan.angle_min = 0.0;
@@ -93,7 +94,7 @@ struct irFutzer
         lscan.header.frame_id = "lscan";
         lscan.angle_min = -pi/4.0;
         lscan.angle_max = pi/4.0;
-        lscan.angle_increment = pi/8.0;
+        lscan.angle_increment = pi/4.0;
         lscan.time_increment = 0;
         lscan.scan_time = .045;
         lscan.range_min = dist_to_ir_center + .1;
@@ -103,7 +104,7 @@ struct irFutzer
         rscan.header.frame_id = "rscan";
         rscan.angle_min = -pi/4.0;
         rscan.angle_max = pi/4.0;
-        rscan.angle_increment = pi/8.0;
+        rscan.angle_increment = pi/4.0;
         rscan.time_increment = 0;
         rscan.scan_time = .045;
         rscan.range_min = dist_to_ir_center + .1;
@@ -140,6 +141,11 @@ struct irFutzer
         rscan.ranges[0] = msg.r.bak + dist_to_ir_center;
         //publish the message
         rscan_pub.publish(rscan);
+
+        //scan_pub.publish(frscan);
+        //scan_pub.publish(flscan);
+        scan_pub.publish(rscan);
+        scan_pub.publish(lscan);
     }
 };
 
