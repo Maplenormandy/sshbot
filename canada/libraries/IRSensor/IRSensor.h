@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include <inttypes.h>
-#include <paralympics/IRStamped.h>
+#include <b2b/IRStamped.h>
 #include <SensorTimer.h>
 
 class IRSensor
@@ -35,7 +35,7 @@ class IRSuite
     public:
         IRSuite();
 
-        paralympics::IRStamped ir_msg;
+        b2b::IRStamped ir_msg;
         ros::Publisher ir_raw;
 
         SensorTimer st;
@@ -45,7 +45,8 @@ class IRSuite
             IRSensor fwd, mid, bak;
         } l, r;
 
-        IRSensor fwd;
+        IRSensor fwd_l;
+        IRSensor fwd_r;
 
         /*
          * Functions

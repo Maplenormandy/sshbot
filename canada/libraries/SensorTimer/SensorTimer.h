@@ -1,14 +1,13 @@
 #ifndef SENSOR_TIMER_H_
 #define SENSOR_TIMER_H_
 
-#include <inttypes.h>
 #include <ros.h>
 #include <std_msgs/Header.h>
 
 struct SensorTimer
 {
-    uint32_t now;
-    uint32_t old;
+    uint32 now;
+    uint32 old;
 
     double dt;
 
@@ -20,7 +19,7 @@ struct SensorTimer
 
     static void init(ros::NodeHandle* _nh);
 
-    void update(uint32_t time);
+    void update(uint32 time);
 };
 
 #endif

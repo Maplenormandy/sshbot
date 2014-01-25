@@ -52,7 +52,8 @@ void IRSuite::loop(void)
     //ir_msg.r.fwd = r.fwd.read();
     //ir_msg.r.mid = r.mid.read();
     //ir_msg.r.bak = r.bak.read();
-    ir_msg.fwd = fwd.read();
+    ir_msg.fwd_l = fwd_l.read();
+    //ir_msg.fwd_r = fwd_r.read();
 
     st.update(micros());
     ir_raw.publish(&ir_msg);

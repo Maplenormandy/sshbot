@@ -15,7 +15,7 @@ void SensorTimer::init(ros::NodeHandle* _nh)
     nh = _nh;
 }
 
-void SensorTimer::update(uint32_t time)
+void SensorTimer::update(uint32 time)
 {
     old = now;
     now = time;
