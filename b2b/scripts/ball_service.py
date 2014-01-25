@@ -107,7 +107,7 @@ class BallHandler():
 
 
 def main():
-    rospy.init_node('ball_services')
+    rospy.init_node('ball_service')
     bh = BallHandler()
     rospy.spin()
 

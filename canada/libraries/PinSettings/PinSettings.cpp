@@ -19,18 +19,18 @@ void pinSetup(void)
     pinMode(SCREW_PWM, PWM);
     pinMode(SCREW_DIR, OUTPUT);
 
-    //pinMode(KICK_SERVO, PWM);
-    //pinMode(PAC_SERVO, PWM);
-    //pinMode(GATE_G_SERVO, PWM);
-    //pinMode(GATE_R_SERVO, PWM);
+    pinMode(KICK_SERVO, PWM);
+    pinMode(PAC_SERVO, PWM);
+    pinMode(GATE_G_SERVO, PWM);
+    pinMode(GATE_R_SERVO, PWM);
 
     pinMode(ENC_L_A, INPUT);
     pinMode(ENC_L_B, INPUT);
     pinMode(ENC_R_A, INPUT);
     pinMode(ENC_R_B, INPUT);
 
-    pinMode(ENC_GND, OUTPUT);
-    pinMode(ENC_VCC, OUTPUT);
+    //pinMode(ENC_GND, OUTPUT);
+    //pinMode(ENC_VCC, OUTPUT);
 
     pinMode(IR_L_FWD, INPUT);
     pinMode(IR_L_MID, INPUT);
@@ -41,6 +41,6 @@ void pinSetup(void)
     pinMode(IR_FWD_L, INPUT);
     pinMode(IR_FWD_R, INPUT);
 
-    digitalWrite(ENC_GND, LOW);
-    digitalWrite(ENC_VCC, HIGH);
+    //digitalWrite(ENC_GND, LOW);
+    //digitalWrite(ENC_VCC, HIGH);
 }

@@ -10,6 +10,7 @@
 
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
+#include "std_msgs/Empty.h"
 
 class DifferentialDrive
 {
@@ -17,9 +18,11 @@ class DifferentialDrive
         DifferentialDrive();
 
         geometry_msgs::TwistStamped odom_msg;
+        std_msgs::Empty overspeed_msg;
         static geometry_msgs::Twist cmd_vel_msg;
 
         ros::Publisher odom;
+        ros::Publisher overspeed;
 
         ros::Subscriber<geometry_msgs::Twist> pid_tune, cmd_vel;
 

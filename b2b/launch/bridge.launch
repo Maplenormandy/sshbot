@@ -6,5 +6,6 @@
     </node>
 
     <node pkg="b2b" type="msg_parser" name="msg_parser" />
+    <node pkg="b2b" type="ball_service.py" name="ball_service" />
 
 </launch>

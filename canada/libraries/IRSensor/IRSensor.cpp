@@ -49,10 +49,10 @@ void IRSuite::loop(void)
     ir_msg.l.fwd = l.fwd.read();
     ir_msg.l.mid = l.mid.read();
     ir_msg.l.bak = l.bak.read();
-    //ir_msg.r.fwd = r.fwd.read();
-    //ir_msg.r.mid = r.mid.read();
-    //ir_msg.r.bak = r.bak.read();
-    ir_msg.fwd_l = fwd_l.read();
+    ir_msg.r.fwd = r.fwd.read();
+    ir_msg.r.mid = r.mid.read();
+    ir_msg.r.bak = r.bak.read();
+    //ir_msg.fwd_l = fwd_l.read();
     //ir_msg.fwd_r = fwd_r.read();
 
     st.update(micros());

@@ -1,0 +1,8 @@
+digraph G {
+"odom" -> "base_link"[label="Broadcaster: /msg_parser\nAverage rate: 1500000.000 Hz\nMost recent transform: 0.000 \nBuffer length: 0.000 sec\n"];
+"base_link" -> "rscan"[label="Broadcaster: /base_link_to_map_tf\nAverage rate: 1.250 Hz\nMost recent transform: 1390555972.450 \nBuffer length: 4.000 sec\n"];
+"base_link" -> "lscan"[label="Broadcaster: /base_link_to_map_tf\nAverage rate: 1.250 Hz\nMost recent transform: 1390555972.450 \nBuffer length: 4.000 sec\n"];
+"base_link" -> "flscan"[label="Broadcaster: /base_link_to_map_tf\nAverage rate: 1.250 Hz\nMost recent transform: 1390555972.451 \nBuffer length: 4.000 sec\n"];
+"base_link" -> "frscan"[label="Broadcaster: /base_link_to_map_tf\nAverage rate: 1.250 Hz\nMost recent transform: 1390555972.451 \nBuffer length: 4.000 sec\n"];
+"base_link" -> "camera_link"[label="Broadcaster: /base_link_to_map_tf\nAverage rate: 1.250 Hz\nMost recent transform: 1390555972.451 \nBuffer length: 4.000 sec\n"];
+}

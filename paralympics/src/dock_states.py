@@ -2,12 +2,12 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, PointStamped, Pose
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Empty
 from actionlib_tutorials.msg import FibonacciAction
 import math
 import numpy as np
 from sensor_state import SensorState
-from profit.msg import BallArray
+from profit.msg import *
 from smach import *
 from smach_ros import *
 from b2b.srv import *
@@ -17,15 +17,124 @@ __all__ = ['DispenserState']
 
 class AlignToReactor(SensorState):
     def __init__(self, cmd_vel_pub):
-        SensorState.__init__(self, '/profit/reactor_wall_raw', PointStamped, 0.1,
+        SensorState.__init__(self, '/profit/reactor_wall_raw', Wall, 0.1,
                 input_keys=['desired_dist'],
                 outcomes=['succeeded', 'preempted', 'aborted']
                 )
 
         self._cmd_vel = cmd_vel_pub
+        rospy.Subscriber('/overspeed', Empty, self.overspeeded)
+
+    def overspeeded(self, msg):
+        self.overspeed = True
+
+    def loop(self, msg, ud):
+        rospy.loginfo('---')
+        avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
+        rospy.loginfo(avgX)
+        diffY = (msg.a.y - msg.d.y) - (msg.b.y - msg.c.y)
+        rospy.loginfo(diffY)
+        height = (msg.d.y - msg.a.y) + (msg.c.y - msg.b.y)
+        rospy.loginfo(height)
+
+        vel = Twist()
+        """
+        self.avgXi += avgX / 30.0
+        self.avgXi = np.clip(self.avgXi, -0.05, 0.05)
+
+
+        vel.linear.x = np.clip((0.3-height)*0.4, -0.05, 0.05)
+        vel.angular.z = np.clip(-avgX*5.0-diffY*5.0
+                -self.avgXi*10.0, -0.2, 0.2)
+        """
+
+        if self.centering:
+            rospy.loginfo('centering')
+            if abs(diffY)<0.01:
+                vel.angular.z = 0.0
+                self.centering = False
+            else:
+                vel.angular.z = np.clip(-diffY*15.0, -0.4, 0.4)
+        elif not self.aligning and abs(avgX)>0.2 and not self.driving:
+            self.avgX0 = avgX
+            rospy.loginfo('turning away')
+            vel.angular.z = np.clip(avgX*1000.0,-0.4,0.4)
+        else:
+            if not self.driving:
+                self.avgX0 = avgX
+            self.driving = True
+            rospy.loginfo(self.driving)
+            if self.driveCentering:
+                rospy.loginfo('drive centering')
+                if abs(avgX+self.avgX0)<0.05:
+                    self.driveCentering = False
+                else:
+                    vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
+            else:
+                vel.angular.z = np.clip(-avgX*1.2, -0.8, 0.8)
+                rospy.loginfo('driving')
+                vel.linear.x = 0.25
+
+
+        self._cmd_vel.publish(vel)
+
 
     def execute(self, ud):
-        return 'succeeded'
+        self.driveCentering = True
+        self.driving = False
+        self.overspeed = False
+        self.avgXi = 0.0
+        self.aligning = False
+        self.centering = True
+
+        sub = rospy.Subscriber(self._topic, self._msg_type, self._msg_cb)
+
+        msg = ud.msg_in
+
+        while True:
+            if self.preempt_requested():
+                self.service_preempt()
+                sub.unregister()
+                ud.msg_out = msg
+                return 'preempted'
+
+            if msg == None:
+                self._trigger_cond.acquire()
+                self._trigger_cond.wait(self._timeout)
+                self._trigger_cond.release()
+
+                msg = self._msg
+
+            if self.overspeed:
+                for i in range(4):
+                    vel = Twist()
+                    rospy.loginfo('running')
+                    rospy.sleep(0.5)
+                    i += 1
+
+                vel = Twist()
+                vel.linear.x = 0.0
+                self._cmd_vel.publish(vel)
+                return 'succeeded'
+
+            if msg != None:
+                self.foundWall = True
+                ret = self.loop(msg, ud)
+                if ret:
+                    sub.unregister()
+                    ud.msg_out = msg
+                    return ret
+
+                self._msg = None
+                msg = None
+            elif not self.driving:
+                rospy.loginfo(self.driving)
+                rospy.loginfo('backing up')
+                self.foundWall = False
+                self.aligning = True
+                vel = Twist()
+                vel.linear.x = -0.05
+                self._cmd_vel.publish(vel)
 
 class QueueGreenBalls(State):
     def __init__(self):
@@ -78,7 +187,7 @@ class ReactorState(StateMachine):
                     transitions={'succeeded':'DUMP_HIGH'}
                     )
             StateMachine.add('DUMP_HIGH', DumpGreenBalls(),
-                    transitions={'succeeded':'SM_LOW'}
+                    transitions={'succeeded':'succeeded'}
                     )
             StateMachine.add('SM_LOW', self.sm_low,
                     remapping={
@@ -100,6 +209,7 @@ class AlignAndQueue(Concurrence):
                 outcome_cb = self.outcome_cb
                 )
         self._cmd_vel = cmd_vel_pub
+        self.userdata.msg_in = None
 
         with self:
             Concurrence.add('ALIGN', AlignToReactor(self._cmd_vel),
@@ -193,7 +303,7 @@ class DispenserState(StateMachine):
         StateMachine.__init__(self,
                 outcomes=['succeeded', 'preempted', 'aborted'])
 
-        sas_pub = rospy.Publisher('/sas_cmd', Int16)
+        sas_pub = rospy.Publisher('/sas_cmd', Float32)
         cmd_vel = rospy.Publisher('/cmd_vel', Twist)
 
         with self:
