@@ -1,0 +1,8 @@
+
+---
+Header header
+geometry_msgs/Pose reactor1
+geometry_msgs/Pose reactor2
+geometry_msgs/Pose reactor3
+geometry_msgs/Pose silo
+geometry_msgs/Pose opponent
