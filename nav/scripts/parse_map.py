@@ -74,7 +74,7 @@ class locator():
         window = pxarr.make_surface()
 
         self.correctPoses(window)
-        window = self.displayPoses(window)
+        #window = self.displayPoses(window)
         window = pygame.transform.flip(window, False, True)
         pygame.image.save(window, "nav/map/map.png")
 
