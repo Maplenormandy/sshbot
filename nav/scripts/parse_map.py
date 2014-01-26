@@ -93,8 +93,9 @@ class locator():
         x1 = r*math.cos(theta)
         y1 = r*math.sin(theta)
         
-        f.write('origin: ['+str(-x1)+','+str(-y1)+','+str(dtheta)+']\n')
+        #f.write('origin: ['+str(-x1)+','+str(-y1)+','+str(dtheta)+']\n')
         #f.write('origin: ['+str(-x0)+','+str(-y0)+',0]\n')
+        f.write('origin: [0,0,0]\n')
         f.write('occupied_thresh: 0.65\n')
         f.write('free_thresh: 0.196\n')
         f.write('negate: 0')
