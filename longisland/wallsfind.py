@@ -21,8 +21,8 @@ while(True):
     blur = cv2.blur(frame, (5,2))
     hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
-    lower_blue1 = np.array([80,255*0.15,255*0.1])
-    upper_blue1 = np.array([125,255*0.7,255*0.9])
+    lower_blue1 = np.array([80,255*0.1,255*0.1])
+    upper_blue1 = np.array([130,255*0.9,255*0.9])
 
     imgBlue = cv2.inRange(hsv, lower_blue1, upper_blue1)
 #     src2 = cv2.inRange(hsv, lower_red2, upper_red2)
@@ -74,10 +74,11 @@ while(True):
     upper = []
     lower = []
     for pt in contour:
-        if m*pt[0][0]+b > pt[0][1]:
-            upper.append((pt[0][0], pt[0][1]))
-        else:
-            lower.append((pt[0][0], pt[0][1]))
+        if pt[0][1] > 100:
+            if m*pt[0][0]+b > pt[0][1]:
+                upper.append((pt[0][0], pt[0][1]))
+            else:
+                lower.append((pt[0][0], pt[0][1]))
 
     if len(upper) > 1:
         upperline = cv2.fitLine(np.array(upper), 1, 0, 0.01, 0.01)
