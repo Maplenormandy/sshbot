@@ -1,4 +1,4 @@
-`#!/usr/bin/env python
+#!/usr/bin/env python
 import sys
 import roslib; roslib.load_manifest('nav')
 import Queue
@@ -74,7 +74,7 @@ class locator():
         window = pxarr.make_surface()
 
         self.correctPoses(window)
-        #window = self.displayPoses(window)
+        window = self.displayPoses(window)
         window = pygame.transform.flip(window, False, True)
         pygame.image.save(window, "nav/map/map.png")
 
@@ -196,15 +196,15 @@ class locator():
         resp.reactor1.position.z = 0
         resp.reactor1.orientation.z = self.reactor[0][2]
 
-        resp.reactor2.position.x = self.reactor[1][0]
-        resp.reactor2.position.y = self.reactor[1][1]
+        resp.reactor2.position.x = 0#self.reactor[1][0]
+        resp.reactor2.position.y = 0#self.reactor[1][1]
         resp.reactor2.position.z = 0
-        resp.reactor2.orientation.z = self.reactor[1][2]
+        resp.reactor2.orientation.z = 0#self.reactor[1][2]
 
-        resp.reactor3.position.x = self.reactor[2][0]
-        resp.reactor3.position.y = self.reactor[2][1]
+        resp.reactor3.position.x = 0#self.reactor[2][0]
+        resp.reactor3.position.y = 0#self.reactor[2][1]
         resp.reactor3.position.z = 0
-        resp.reactor3.orientation.z = self.reactor[2][2]
+        resp.reactor3.orientation.z = 0#self.reactor[2][2]
 
         resp.silo.position.x = self.silo[0][0]
         resp.silo.position.y = self.silo[0][1]
@@ -227,9 +227,10 @@ def normalize(num):
 
 
 if __name__ == "__main__":
-#    mapString = "22.00:4.50,5.50,3.14:0.00,1.00,0.00,2.00,R:0.00,2.00,1.00,3.00,N:1.00,3.00,0.00,3.00,N:0.00,3.00,0.00,4.00,N:0.00,4.00,1.00,5.00,N:1.00,5.00,3.00,5.00,N:3.00,5.00,3.00,4.00,N:3.00,4.00,4.00,5.00,N:4.00,5.00,5.00,5.00,N:5.00,5.00,5.00,3.00,N:5.00,3.00,4.00,2.00,N:4.00,2.00,4.00,1.00,N:4.00,1.00,3.00,0.00,N:3.00,0.00,2.00,0.00,N:2.00,0.00,2.00,1.00,N:2.00,1.00,0.00,1.00,N:"
-    mapString = "22.0:4.5,5.5,3.14159:0,0,0,1,N:0,1,1,2,O:1,2,1,3,O:1,3,0,4,O:0,4,0,6,S:0,6,3,6,N:3,6,4,6,R:4,6,7,6,N:7,6,7,1,N:7,1,6,0,N:6,0,5,0,R:5,0,3,0,N:3,0,2,1,N:2,1,1,0,N:1,0,0,0,R:4,0,4,5,N:4,5,5,5,N:4,1,3,2,N:3,2,2,2,N:2,2,2,3,N:2,3,4,3,N:5,1,5,3,N:5,3,6,3,N:6,3,6,2,N:6,2,5,1,N:"
-    
+    #mapString = "22.00:4.50,5.50,3.14:0.00,1.00,0.00,2.00,R:0.00,2.00,1.00,3.00,N:1.00,3.00,0.00,3.00,N:0.00,3.00,0.00,4.00,N:0.00,4.00,1.00,5.00,N:1.00,5.00,3.00,5.00,N:3.00,5.00,3.00,4.00,N:3.00,4.00,4.00,5.00,N:4.00,5.00,5.00,5.00,N:5.00,5.00,5.00,3.00,N:5.00,3.00,4.00,2.00,N:4.00,2.00,4.00,1.00,N:4.00,1.00,3.00,0.00,N:3.00,0.00,2.00,0.00,N:2.00,0.00,2.00,1.00,N:2.00,1.00,0.00,1.00,N:"
+    #mapString = "22.0:4.5,5.5,3.14159:0,0,0,1,N:0,1,1,2,O:1,2,1,3,O:1,3,0,4,O:0,4,0,6,S:0,6,3,6,N:3,6,4,6,R:4,6,7,6,N:7,6,7,1,N:7,1,6,0,N:6,0,5,0,R:5,0,3,0,N:3,0,2,1,N:2,1,1,0,N:1,0,0,0,R:4,0,4,5,N:4,5,5,5,N:4,1,3,2,N:3,2,2,2,N:2,2,2,3,N:2,3,4,3,N:5,1,5,3,N:5,3,6,3,N:6,3,6,2,N:6,2,5,1,N:"
+    mapString = "22.0:1,1,3.14159:0,0,0,3,N:0,3,0,4,S:0,4,2,4,O:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,0,0,N:"
+
     rospy.init_node('locator_server')    
     loc = locator(mapString)
     rospy.spin()
