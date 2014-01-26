@@ -19,9 +19,9 @@ class peeper:
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[49, 80, .17, .8, .1, .8]]    
     
-    EVALPOINT = (100,100)
+    EVALPOINT = (10,90)
     
-    def __init__(self, colourCall=print, camera=1, debug=False):
+    def __init__(self, colourCall=print, camera=0, debug=False):
         self.cap = cv2.VideoCapture(camera)
         print("Setting up camera feed...")
         time.sleep(1)
@@ -46,8 +46,8 @@ class peeper:
             cv2.circle(frame, self.EVALPOINT, 1, (0, 255, 0), 1)
             cv2.circle(blur, self.EVALPOINT, 1, (0, 255, 0), 1)
             
-            h,s,v = hsv[self.EVALPOINT[0], self.EVALPOINT[1]]
-            print(h)
+            h,s,v = hsv[self.EVALPOINT[1], self.EVALPOINT[0]]
+            print(h,s,v)
             
             if self.debug:
                 cv2.imshow('FullImage', blur)
