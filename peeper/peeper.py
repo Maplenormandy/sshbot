@@ -15,9 +15,9 @@ class peeper:
     DESIRED_WIDTH = 352
     DESIRED_HEIGHT = 288
     
-    RED = [[0,   10,  .3, .95, .2, .95],
-           [170, 180, .3, .73, .3, .9]]
-    GREEN = [[49, 80, .17, .8, .1, .8]]    
+    BALL_LIGHT = 50
+    GREEN_LOW = 20
+    GREEN_HI = 110
     
     EVALPOINT = (10,90)
     
@@ -47,9 +47,17 @@ class peeper:
             cv2.circle(blur, self.EVALPOINT, 1, (0, 255, 0), 1)
             
             h,s,v = hsv[self.EVALPOINT[1], self.EVALPOINT[0]]
-            print(h,s,v)
+            
+            if v > self.BALL_LIGHT:
+                if h > self.GREEN_LOW and h < self.GREEN_HI:
+                    self.colourCall("G")
+                else:
+                    self.colourCall("R")
+            else: 
+                self.colourCall("N")
             
             if self.debug:
+                print(h,s,v)
                 cv2.imshow('FullImage', blur)
             
     def execute(self):
