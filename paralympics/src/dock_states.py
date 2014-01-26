@@ -71,9 +71,9 @@ class AlignToReactor(SensorState):
                 else:
                     vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
             else:
-                vel.angular.z = np.clip(-avgX*1.2, -0.8, 0.8)
+                vel.angular.z = np.clip(-avgX*2.0, -0.8, 0.8)
                 rospy.loginfo('driving')
-                vel.linear.x = 0.25
+                vel.linear.x = 0.15
 
 
         self._cmd_vel.publish(vel)

@@ -25,11 +25,11 @@ class BallSeeingEye:
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[49, 80, .17, .8, .1, .8]]
     #BLUE = [[100, 140,  .1, .9, .1, .9]]
-    BLUE = [[95, 150,  0.0, 1.0, 0.0, 1.0]]
+    BLUE = [[95, 150,  0.0, 1.0, 0.4, 1.0]]
     TEAL = [[80, 95,  .1, .9, .2, .9]]
     YELLOW = [[10, 40, .3,  .9, .3, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL}
-    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0)}
+    LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0), 'G':(0,0,255)}
 
     def __init__(self, ballCb=print, wallCb=print,
             camera=1, debug=False, quickstart = False):
@@ -105,7 +105,7 @@ class BallSeeingEye:
 #                 forbidden.append(redWalls)
 
             # Find Teal WALLS
-            tealWalls = self.wallsFind(hsv, frame, 'T')
+            tealWalls = self.wallsFind(hsv, frame, 'G')
             if not tealWalls == None:
                 wallsList.append(tealWalls)
                 forbidden.append(tealWalls)

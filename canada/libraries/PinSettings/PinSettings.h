@@ -10,18 +10,18 @@ const uint8 MOTOR_R_PWM = 12; // PWM
 const uint8 MOTOR_R_DIR = 30; // OUTPUT
 
 const uint8 SAS_PWM = 5;
-const uint8 SAS_DIR = 35;
+const uint8 SAS_DIR = 4;
 
-const uint8 ROLLER_PWM = 6;
-const uint8 ROLLER_DIR = 36;
+const uint8 ROLLER_PWM = 7;
+const uint8 ROLLER_DIR = 6;
 
-const uint8 SCREW_PWM = 7;
-const uint8 SCREW_DIR = 37;
+const uint8 SCREW_PWM = 9;
+const uint8 SCREW_DIR = 8;
 
 const uint8 KICK_SERVO = 0;
-const uint8 PAC_SERVO = 1;
-const uint8 GATE_G_SERVO = 2;
-const uint8 GATE_R_SERVO = 3;
+const uint8 PAC_SERVO = 2;
+const uint8 GATE_G_SERVO = 3;
+const uint8 GATE_R_SERVO = 1;
 
 const uint8 ENC_L_A = 32; // INPUT
 const uint8 ENC_L_B = 31; // INPUT
