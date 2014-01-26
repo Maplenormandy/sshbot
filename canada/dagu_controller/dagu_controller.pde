@@ -1,10 +1,11 @@
-
+uint8 PWM_PIN = 7;
+uint8 DIR_PIN = 6;
 
 void setup()
 {
-    pinMode(6, PWM);
-    pinMode(7, OUTPUT);
-    digitalWrite(7, HIGH);
+    pinMode(PWM_PIN, PWM);
+    pinMode(DIR_PIN, OUTPUT);
+    digitalWrite(DIR_PIN, HIGH);
 }
 
 boolean fwd = true;
@@ -23,7 +24,7 @@ void loop()
         {
           times_bak[i-1] -= micros();
           times_fwd[i%4] = micros();
-          digitalWrite(7, LOW);
+          digitalWrite(DIR_PIN, LOW);
           
           long bak = 0;
           for (int j = 0; j < 4; ++j)
@@ -37,7 +38,7 @@ void loop()
         {
           times_fwd[i%4] -= micros();
           times_bak[i%4] = micros();
-          digitalWrite(7, HIGH);
+          digitalWrite(DIR_PIN, HIGH);
           
           i = i%4+1;
           
@@ -54,6 +55,6 @@ void loop()
     
     
 
-    analogWrite(6, 10000);
+    pwmWrite(PWM_PIN, 10000);
     delay(30);
 }

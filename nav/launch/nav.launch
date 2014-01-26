@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="nav" type="tf_broadcaster" name="tf_broadcaster" output="screen" />
+</launch>

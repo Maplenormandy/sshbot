@@ -5,6 +5,8 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <b2b/IRStamped.h>
 #include <boost/math/constants/constants.hpp>
+#include <cmath>
+#include <limits>
 
 ros::Publisher* p_odom_pub;
 tf::TransformBroadcaster* p_odom_broadcaster;
@@ -55,15 +57,52 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
     p_odom_pub->publish(odom);
 }
 
+struct irReading
+{
+    float l;
+    static const float lowpass = 0.3f;
+    const float minRange;
+    const float maxRange;
+
+    irReading(float min, float max) : minRange(min), maxRange(max)
+    {
+    }
+
+    float update(float in)
+    {
+        if (std::isfinite(in))
+        {
+            l = in*lowpass + l*(1-lowpass);
+            return l;
+        }
+        else if (in < 0.0f)
+        {
+            l = minRange*lowpass + l*(1-lowpass);
+            return -std::numeric_limits<float>::infinity();
+        }
+        else
+        {
+            l = maxRange*lowpass + l*(1-lowpass);
+            return std::numeric_limits<float>::infinity(); 
+        }
+    }
+};
+
 struct irFutzer
 {
     ros::Publisher lscan_pub, rscan_pub, flscan_pub, frscan_pub, scan_pub;
     sensor_msgs::LaserScan lscan, rscan, flscan, frscan;
-    const double dist_to_ir_center = 0.0513842;
+    const float dist_to_ir_center = 0.0513842f;
+
+
+    irReading lfwd, lmid, lbak;
 
     ros::NodeHandle n;
 
-    irFutzer()
+    irFutzer() : 
+        lfwd(0.1+dist_to_ir_center, 0.8+dist_to_ir_center),
+        lmid(0.1+dist_to_ir_center, 0.8+dist_to_ir_center),
+        lbak(0.1+dist_to_ir_center, 0.8+dist_to_ir_center)
     {
         lscan_pub = n.advertise<sensor_msgs::LaserScan>("lscan", 150);
         rscan_pub = n.advertise<sensor_msgs::LaserScan>("rscan", 150);
@@ -128,9 +167,9 @@ struct irFutzer
 
         //=======Left IR========
         lscan.header.stamp = msg.header.stamp;
-        lscan.ranges[0] = msg.l.fwd + dist_to_ir_center;
-        lscan.ranges[1] = msg.l.mid + dist_to_ir_center;
-        lscan.ranges[2] = msg.l.bak + dist_to_ir_center;
+        lscan.ranges[0] = lfwd.update(msg.l.fwd + dist_to_ir_center);
+        lscan.ranges[1] = lmid.update(msg.l.mid + dist_to_ir_center);
+        lscan.ranges[2] = lbak.update(msg.l.bak + dist_to_ir_center);
         //publish the message
         lscan_pub.publish(lscan);
 
@@ -144,7 +183,7 @@ struct irFutzer
 
         //scan_pub.publish(frscan);
         //scan_pub.publish(flscan);
-        scan_pub.publish(rscan);
+        //scan_pub.publish(rscan);
         scan_pub.publish(lscan);
     }
 };

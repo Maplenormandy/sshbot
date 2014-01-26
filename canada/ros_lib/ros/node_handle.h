@@ -1,4 +1,4 @@
-/*
+*
  * Software License Agreement (BSD License)
  *
  * Copyright (c) 2011, Willow Garage, Inc.
@@ -102,9 +102,6 @@ namespace ros {
       /* time used for syncing */
       unsigned long rt_time;
 
-      /* used for computing current time */
-      unsigned long sec_offset, nsec_offset;
-
       unsigned char message_in[INPUT_SIZE];
       unsigned char message_out[OUTPUT_SIZE];
 
@@ -115,6 +112,9 @@ namespace ros {
        * Setup Functions
        */
     public:
+      /* used for computing current time */
+      unsigned long sec_offset, nsec_offset;
+
       NodeHandle_() : configured_(false) {
 
         for(unsigned int i=0; i< MAX_PUBLISHERS; i++) 

@@ -40,8 +40,6 @@
 #include "rosserial_msgs/Log.h"
 #include "rosserial_msgs/RequestParam.h"
 
-#include <wirish_time.h>
-
 #define SYNC_SECONDS        5
 
 #define MODE_FIRST_FF       0
@@ -103,7 +101,6 @@ namespace ros {
 
       /* time used for syncing */
       unsigned long rt_time;
-
 
       unsigned char message_in[INPUT_SIZE];
       unsigned char message_out[OUTPUT_SIZE];
@@ -307,21 +304,19 @@ namespace ros {
       }
 
       Time now(){
-        //unsigned long ms = hardware_.time();
-        uint32 us = micros();
+        unsigned long ms = hardware_.time();
         Time current_time;
-        current_time.sec = us/1000000 + sec_offset;
-        current_time.nsec = (us%1000000)*1000UL + nsec_offset;
+        current_time.sec = ms/1000 + sec_offset;
+        current_time.nsec = (ms%1000)*1000000UL + nsec_offset;
         normalizeSecNSec(current_time.sec, current_time.nsec);
         return current_time;
       }
 
       void setNow( Time & new_now )
       {
-        //unsigned long ms = hardware_.time();
-        uint32 us = micros();
-        sec_offset = new_now.sec - us/1000000 - 1;
-        nsec_offset = new_now.nsec - (us%1000000)*1000UL + 1000000000UL;
+        unsigned long ms = hardware_.time();
+        sec_offset = new_now.sec - ms/1000 - 1;
+        nsec_offset = new_now.nsec - (ms%1000)*1000000UL + 1000000000UL;
         normalizeSecNSec(sec_offset, nsec_offset);
       }
 

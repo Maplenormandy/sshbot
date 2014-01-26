@@ -29,8 +29,8 @@ ros::Subscriber<std_msgs::Empty> odom_reset("odom_reset", &odom_reset_cb);
 
 void sas_cmd_cb(const std_msgs::Float32& msg)
 {
-    uint16 pwm = (uint16) constrain(abs(msg.data), 0, 65535);
-    uint8 dir = msg.data < 0.0f ? HIGH : LOW;
+    uint16 pwm = (uint16) constrain(abs(msg.data*65535), 0, 65535);
+    uint8 dir = msg.data > 0.0f ? HIGH : LOW;
 
     digitalWrite(SAS_DIR, dir);
     pwmWrite(SAS_PWM, pwm);
@@ -39,8 +39,8 @@ ros::Subscriber<std_msgs::Float32> sas_cmd("sas_cmd", &sas_cmd_cb);
 
 void roller_cmd_cb(const std_msgs::Float32& msg)
 {
-    uint16 pwm = (uint16) constrain(abs(msg.data), 0, 65535);
-    uint8 dir = msg.data < 0.0f ? HIGH : LOW;
+    uint16 pwm = (uint16) constrain(abs(msg.data*65535), 0, 65535);
+    uint8 dir = msg.data > 0.0f ? HIGH : LOW;
 
     digitalWrite(ROLLER_DIR, dir);
     pwmWrite(ROLLER_PWM, pwm);
@@ -49,8 +49,8 @@ ros::Subscriber<std_msgs::Float32> roller_cmd("roller_cmd", &roller_cmd_cb);
 
 void screw_cmd_cb(const std_msgs::Float32& msg)
 {
-    uint16 pwm = (uint16) constrain(abs(msg.data), 0, 65535);
-    uint8 dir = msg.data < 0.0f ? HIGH : LOW;
+    uint16 pwm = (uint16) constrain(abs(msg.data*65535), 0, 65535);
+    uint8 dir = msg.data > 0.0f ? HIGH : LOW;
 
     digitalWrite(SCREW_DIR, dir);
     pwmWrite(SCREW_PWM, pwm);
@@ -107,6 +107,22 @@ void setup()
     nh.advertise(dd.odom);
     nh.advertise(dd.overspeed);
 
+    nh.subscribe(odom_reset);
+    nh.subscribe(sas_cmd);
+    nh.subscribe(roller_cmd);
+    nh.subscribe(screw_cmd);
+    nh.subscribe(kick_cmd);
+    nh.subscribe(pac_cmd);
+    nh.subscribe(gate_g_cmd);
+    nh.subscribe(gate_r_cmd);
+
+    kick.attach(KICK_SERVO);
+    pac.attach(PAC_SERVO);
+    pac.write(70);
+    gate_g.attach(GATE_G_SERVO);
+    gate_g.write(0);
+    gate_r.attach(GATE_R_SERVO);
+
     irs.l.fwd.calibrate(0.00379680814028f, -0.37963064697f,
             0.1f, 0.8f);
     irs.l.fwd.attach(IR_L_FWD);
@@ -134,8 +150,8 @@ void setup()
             0.1f, 0.8f);
 
 
-    //digitalWrite(ROLLER_DIR, HIGH);
-    //pwmWrite(ROLLER_PWM, 65535);
+    digitalWrite(ROLLER_DIR, HIGH);
+    pwmWrite(ROLLER_PWM, 0);
 
     //digitalWrite(SCREW_DIR, HIGH);
     //pwmWrite(SCREW_PWM, 65535);

@@ -35,7 +35,7 @@ DifferentialDrive::DifferentialDrive() :
     encL.attach(ENC_L_A, ENC_L_B);
     encR.attach(ENC_R_A, ENC_R_B);
 
-    odom_msg.header.frame_id = read_the_docs;
+    //odom_msg.header.frame_id = read_the_docs;
 }
 
 void DifferentialDrive::reset(void)

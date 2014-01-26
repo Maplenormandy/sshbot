@@ -1,22 +1,44 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('b2b')
 import rospy
-from std_msgs.msg import String, UInt16, Float32
+from std_msgs.msg import String, Int16, Float32
 import math
 import numpy as np
 import thread
 import threading
 from b2b.srv import *
+import threading
+
+"""
+class RollerThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.stopped = threading.Event()
+        self.roller_pub = rospy.Publisher('/roller_cmd', Float32)
+        self.msg = Float32(data=0.5)
+
+    def run(self):
+        while not self.stopped.wait(1.0):
+            self.roller_pub.publish(self.msg)
+"""
 
 class BallHandler():
     def __init__(self):
-        self.green_tray = 0
+        self.green_tray = 999
         self.green_queued = 0
 
-        self.kicker_pub = rospy.Publisher('/kick_cmd', UInt16)
-        self.pac_pub = rospy.Publisher('/pac_cmd', UInt16)
-        self.gate_g_pub = rospy.Publisher('/gate_g_cmd', UInt16)
-        self.gate_r_pub = rospy.Publisher('/gate_r_cmd', UInt16)
+        self.roller_pub = rospy.Publisher('/roller_cmd', Float32)
+        self.roller_pub.publish(Float32(data=0.5))
+
+        self.screw_queue = ['']*90
+        self.screw_ind = 0
+
+        self.kick_pub = rospy.Publisher('/kick_cmd', Int16)
+        self.pac_pub = rospy.Publisher('/pac_cmd', Int16)
+        self.pac_pub.publish(Int16(data=70))
+        self.gate_g_pub = rospy.Publisher('/gate_g_cmd', Int16)
+        self.gate_r_pub = rospy.Publisher('/gate_r_cmd', Int16)
+        self.gate_g_pub.publish(Int16(data=0))
 
         self.screw_sub = rospy.Subscriber('/profit/screw', String, self.saw_ball)
 
@@ -24,27 +46,14 @@ class BallHandler():
         self.ball_srv = rospy.Service('green_ball_server', GreenBallService, self.greenBallSrv)
         self.ball_dump = rospy.Service('ball_dump', BallDump, self.ballDump)
 
-    def kickGreenBall(self):
-        rospy.loginfo('kicking ball')
-        msg = UInt16()
-        rospy.sleep(1.0)
-        msg.data = 90
-        self.kicker_pub.publish(msg)
-        rospy.sleep(1.0)
-        msg.data = 0
-        self.kicker_pub.publish(msg)
-        rospy.sleep(1.0)
-        self.ball_lock.acquire()
-        self.green_tray += 1
-        self.ball_lock.release()
-
     def ballDump(self, req):
         rospy.loginfo('dumping ' + req.color)
         resp = BallDumpResponse()
-        msg = UInt16()
-        msg.data = 180
+        msg = Int16()
+        msg.data = 0
 
         if req.color=='g':
+            msg.data = 90
             self.gate_g_pub.publish(msg)
             rospy.sleep(1.0)
 
@@ -78,19 +87,19 @@ class BallHandler():
 
             rospy.loginfo('queueing green ball')
 
-            msg = UInt16()
-            msg.data = 180
+            msg = Int16()
+            msg.data = 30
             self.pac_pub.publish(msg.data)
-            rospy.sleep(0.4)
+            rospy.sleep(1.0)
 
             self.ball_lock.acquire()
             self.green_tray -= 1
             self.green_queued += 1
             self.ball_lock.release()
 
-            msg.data = 0
+            msg.data = 70
             self.pac_pub.publish(msg.data)
-            rospy.sleep(0.4)
+            rospy.sleep(1.0)
 
         resp.tray = self.green_tray
         resp.queued = self.green_queued
@@ -98,12 +107,12 @@ class BallHandler():
         return resp
 
     def saw_ball(self, msg):
-        if msg.data == 'g':
-            rospy.loginfo('saw green ball')
-            thread.start_new_thread(self.kickGreenBall, ())
-        elif msg.data == 'r':
-            rospy.loginfo('saw red ball')
-
+        self.screw_queue[self.screw_ind] = msg.data
+        self.screw_ind += 1
+        if self.screw_queue[self.screw_ind-60] == 'g':
+            self.kick_cmd.publish(Int16(data=180))
+        else:
+            self.kick_cmd.publish(Int16(data=0))
 
 
 def main():
