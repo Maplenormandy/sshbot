@@ -13,6 +13,7 @@ ros::Publisher* p_odom_pub;
 tf::TransformBroadcaster* p_odom_broadcaster;
 
 const double pi = boost::math::constants::pi<double>();
+const double irRange = 0.55;
 
 nav_msgs::Odometry odom;
 
@@ -73,20 +74,20 @@ struct irReading
 
     float update(float in)
     {
-        if (std::isfinite(in))
-        {
-            l = in*lowpass + l*(1-lowpass);
-            return l;
-        }
-        else if (in < 0.0f)
+        if (in < minRange)
         {
             l = minRange*lowpass + l*(1-lowpass);
             return -std::numeric_limits<float>::infinity();
         }
-        else
+        else if (in > maxRange)
         {
             l = maxRange*lowpass + l*(1-lowpass);
             return std::numeric_limits<float>::infinity(); 
+        }
+        else
+        {
+            l = in*lowpass + l*(1-lowpass);
+            return l;
         }
     }
 };
@@ -103,12 +104,12 @@ struct irFutzer
     ros::NodeHandle n;
 
     irFutzer() : 
-        lfwd(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
-        lmid(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
-        lbak(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
-        rfwd(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
-        rmid(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
-        rbak(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        lfwd(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
+        lmid(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
+        lbak(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
+        rfwd(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
+        rmid(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
+        rbak(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
         fwdl(0.04, 0.26),
         fwdr(0.04, 0.26)
     {
@@ -120,8 +121,8 @@ struct irFutzer
 
         frscan.header.frame_id = "frscan";
         frscan.angle_min = 0.0;
-        frscan.angle_max = 0.0;
-        frscan.angle_increment = 0.0;
+        frscan.angle_max = 0.1;
+        frscan.angle_increment = 0.1;
         frscan.time_increment = 0.0;
         frscan.scan_time = .045;
         frscan.range_min = 0.04;
@@ -130,8 +131,8 @@ struct irFutzer
 
         flscan.header.frame_id = "flscan";
         flscan.angle_min = 0.0;
-        flscan.angle_max = 0.0;
-        flscan.angle_increment = 0.0;
+        flscan.angle_max = 0.1;
+        flscan.angle_increment = 0.1;
         flscan.time_increment = 0.0;
         flscan.scan_time = .045;
         flscan.range_min = 0.04;
@@ -145,7 +146,7 @@ struct irFutzer
         lscan.time_increment = 0;
         lscan.scan_time = .045;
         lscan.range_min = dist_to_ir_center + .1;
-        lscan.range_max = dist_to_ir_center + .6;
+        lscan.range_max = dist_to_ir_center + irRange;
         lscan.ranges.resize(3);
 
         rscan.header.frame_id = "rscan";
@@ -155,9 +156,8 @@ struct irFutzer
         rscan.time_increment = 0;
         rscan.scan_time = .045;
         rscan.range_min = dist_to_ir_center + .1;
-        rscan.range_max = dist_to_ir_center + .6;
+        rscan.range_max = dist_to_ir_center + irRange;
         rscan.ranges.resize(3);
-        rscan.intensities.resize(3);
     }
 
     void irToLaser(const b2b::IRStamped &msg)
