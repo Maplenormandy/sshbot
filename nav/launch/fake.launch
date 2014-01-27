@@ -6,6 +6,15 @@
 
   <include file="$(find nav)/launch/nav.launch" />
 
+  <node name="fake_relay" pkg="topic_tools" type="relay" args="odom base_pose_ground_truth" />
+
+  <node name="fake_localization" pkg="fake_localization" type="fake_localization" >
+    <rosparam param="delta_x">-0.558798517172</rosparam>
+    <rosparam param="delta_y">-0.558798517172</rosparam>
+    <rosparam param="delta_yaw">3.14159265359</rosparam>
+  </node>
+
+
   <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
     <rosparam file="$(find nav)/costmap_common_params.yaml" command="load" ns="global_costmap" />
     <rosparam file="$(find nav)/costmap_common_params.yaml" command="load" ns="local_costmap" />

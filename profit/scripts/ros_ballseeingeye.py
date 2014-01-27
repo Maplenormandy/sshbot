@@ -20,8 +20,8 @@ def main():
         msg.header.frame_id = 'camera_link'
         for (x,y,r,color) in ballsList:
             ball_pos = Point()
-            ball_pos.x = (1.0-y-r)*.4
-            ball_pos.y = -x/(1.5-y-r)*0.25
+            ball_pos.x = y-r
+            ball_pos.y = -x
             ball = Ball(ball_pos,color)
             msg.balls.append(ball)
 
@@ -47,7 +47,7 @@ def main():
 
 
     bse = BallSeeingEye(ballCb=ballCb, wallCb=wallCb,
-            debug=True, quickstart=True)
+            debug=False, quickstart=True)
 
     while not rospy.is_shutdown():
         bse.loop()

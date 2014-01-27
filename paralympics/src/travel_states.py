@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('paralympics')
 import rospy
-from geometry_msgs.msg import Twist, Pose, PointStamped
+from geometry_msgs.msg import Twist, Pose, PointStamped, PoseStamped
 from std_msgs.msg import Header
 from profit.msg import *
 from move_base_msgs.msg import *
@@ -31,50 +31,12 @@ class BallTracker(SensorState):
         self.tf_listener = tf.TransformListener()
 
     def loop(self, msg, ud):
-        if self.chaser_state.balls == None:
-            self.chaser_state.balls = list(msg.balls)
-            self.chaser_state.ball_header = msg.header
-        else:
-            frames = (
-                    'camera_link', msg.header,
-                    'camera_link', self.chaser_state.ball_header,
-                    'camera_link'
-                    )
+        self.chaser_state.balls = map(lambda b: b.point, msg.balls)
+        self.chaser_state.ball_header = msg.header
 
-            self.tf_listener.waitForTransformFull(*frames)
-            translation, rotation = self.tf_listener.lookupTransformFull(*frames)
-            mat44 = self.tf_listener.fromTranslationRotation(translation, rotation)
-
-            def transformBalls(ball):
-                xyz = tuple(np.dot(mat44,
-                    np.array([ball.x, ball.y, ball.z, 1.0])))[:3]
-                return Point(*xyz)
-
-            old_balls = map(transformBalls, self.chaser_state.balls)
-
-            new_balls = []
-
-            for ball in old_balls:
-                if ball.x / math.hypot(ball.x, ball.y) > math.cos(math.radians(60)):
-                    dists = map(lambda x: math.hypot(ball.x-x.x, ball.y-x.y), msg.balls)
-                    min_index = min(xrange(len(dists)), key=dists.__getitem__)
-                    # Kind of like a low-pass filter
-                    if dists[min_index] < 0.02:
-                        ball2 = balls[min_index]
-                        ball.x = ball.x*0.5 + ball2.x*0.5
-                        ball.y = ball.y*0.5 + ball2.y*0.5
-                        new_balls.append(ball)
-                else:
-                    new_balls.append(ball)
-
-
-            self.chaser_state.balls = sorted(new_balls,
-                    key=lambda ball: -math.hypot(ball.x, ball.y))
-
-            self.chaser_state.ball_header = msg.header
-
-        self.chaser_state.balls
-
+        if len(msg.balls)>0:
+            self.move_state.found_balls()
+            self.chaser_state.reset_ball_goal()
 
 class BallChaser(State):
     def __init__(self, action_client, timeout):
@@ -91,6 +53,8 @@ class BallChaser(State):
         self._trigger_cond = threading.Condition()
 
         self.goal = MoveBaseGoal()
+
+        self.t = tf.TransformListener()
 
 
     def execute(self, ud):
@@ -118,8 +82,18 @@ class BallChaser(State):
         if len(self.balls)>0:
             rospy.loginfo(self.balls)
             self.goal_status = None
-            self.goal.header = self.ball_header
-            self.goal.pose.position = self.balls.pop()
+            target_pose = PoseStamped()
+            target_pose.header = self.ball_header
+            target_pose.pose.position = self.balls.pop()
+            rospy.loginfo(self.t.getFrameStrings())
+            pos, orient = self.t.lookupTransform("odom", "base_link", rospy.Time())
+            target_pose.pose.orientation.x = orient[0]
+            target_pose.pose.orientation.y = orient[1]
+            target_pose.pose.orientation.z = orient[2]
+            target_pose.pose.orientation.w = orient[3]
+
+            self.goal.target_pose = target_pose
+
             self.action_client.cancel_goal()
             self.action_client.send_goal(self.goal, self.done_cb)
 
@@ -143,13 +117,12 @@ class Move(State):
         self._timeout = timeout
         self._trigger_cond = threading.Condition()
 
-        self.goal = FibonacciGoal()
-
-
     def execute(self, ud):
         self.goal_status = None
-        self.goal.order = ud.target_pose
+        self.goal = MoveBaseGoal()
+        self.goal.target_pose = ud.target_pose
 
+        self.action_client.cancel_goal()
         self.action_client.send_goal(self.goal, self.done_cb)
 
         self.ball_status = False
@@ -186,6 +159,17 @@ class Move(State):
         self._trigger_cond.release()
 
 
+class PretendActionClient():
+    def cancel_goal(self):
+        pass
+
+    def send_goal(self, goal, done_cb):
+        rospy.loginfo(goal)
+
+    def wait_for_server(self):
+        pass
+
+
 class TravelState(Concurrence):
     def __init__(self):
         Concurrence.__init__(self,
@@ -201,7 +185,8 @@ class TravelState(Concurrence):
                 outcomes=['succeeded', 'preempted', 'aborted']
                 )
 
-        self.action_client = SimpleActionClient('fibonacci', FibonacciAction)
+        #self.action_client = SimpleActionClient('move_base', MoveBaseAction)
+        self.action_client = PretendActionClient()
 
         self.move_state = Move(self.action_client, 0.2)
         self.chaser_state = BallChaser(self.action_client, 0.2)
@@ -224,10 +209,12 @@ class TravelState(Concurrence):
             Concurrence.add('SM_MOVE', self.sm_move)
             Concurrence.add('BALL_WATCHER', self.watcher)
 
-    def execute(self):
+    def execute(self, ud=None):
+        if ud==None:
+            ud = self.userdata
         self.action_client.wait_for_server()
 
-        return Concurrence.execute(self)
+        return Concurrence.execute(self, ud)
 
     def child_termination_cb(self, outmap):
         if outmap['SM_MOVE']!=None:
@@ -250,7 +237,12 @@ class TravelState(Concurrence):
 def main():
     rospy.init_node('traveltest')
     sm_travel = TravelState()
-    sm_travel.userdata.target_pose = 10
+    target_pose = PoseStamped()
+    target_pose.header.stamp = rospy.Time.now()
+    target_pose.header.frame_id = "map"
+    target_pose.pose.position.x = 1.0
+    target_pose.pose.orientation.z = 1.0
+    sm_travel.userdata.target_pose = target_pose
     sm_travel.execute()
 
 if __name__=='__main__':

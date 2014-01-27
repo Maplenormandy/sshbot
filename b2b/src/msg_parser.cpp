@@ -5,6 +5,7 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <b2b/IRStamped.h>
 #include <boost/math/constants/constants.hpp>
+#include <boost/assign/list_of.hpp>
 #include <cmath>
 #include <limits>
 
@@ -12,6 +13,8 @@ ros::Publisher* p_odom_pub;
 tf::TransformBroadcaster* p_odom_broadcaster;
 
 const double pi = boost::math::constants::pi<double>();
+
+nav_msgs::Odometry odom;
 
 void futzOdom(const geometry_msgs::TwistStamped& msg)
 {
@@ -37,7 +40,6 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
     p_odom_broadcaster->sendTransform(odom_trans);
 
     //next, we'll publish the odometry message over ROS
-    nav_msgs::Odometry odom;
     odom.header.stamp = msg.header.stamp;
     odom.header.frame_id = "odom";
 
@@ -60,12 +62,13 @@ void futzOdom(const geometry_msgs::TwistStamped& msg)
 struct irReading
 {
     float l;
-    static const float lowpass = 0.3f;
+    static const float lowpass = 0.4f;
     const float minRange;
     const float maxRange;
 
     irReading(float min, float max) : minRange(min), maxRange(max)
     {
+        l = (minRange+maxRange)/2.0f;
     }
 
     float update(float in)
@@ -95,14 +98,19 @@ struct irFutzer
     const float dist_to_ir_center = 0.0513842f;
 
 
-    irReading lfwd, lmid, lbak;
+    irReading lfwd, lmid, lbak, rfwd, rmid, rbak, fwdl, fwdr;
 
     ros::NodeHandle n;
 
     irFutzer() : 
-        lfwd(0.1+dist_to_ir_center, 0.8+dist_to_ir_center),
-        lmid(0.1+dist_to_ir_center, 0.8+dist_to_ir_center),
-        lbak(0.1+dist_to_ir_center, 0.8+dist_to_ir_center)
+        lfwd(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        lmid(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        lbak(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        rfwd(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        rmid(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        rbak(0.1+dist_to_ir_center, 0.6+dist_to_ir_center),
+        fwdl(0.04, 0.26),
+        fwdr(0.04, 0.26)
     {
         lscan_pub = n.advertise<sensor_msgs::LaserScan>("lscan", 150);
         rscan_pub = n.advertise<sensor_msgs::LaserScan>("rscan", 150);
@@ -116,8 +124,8 @@ struct irFutzer
         frscan.angle_increment = 0.0;
         frscan.time_increment = 0.0;
         frscan.scan_time = .045;
-        frscan.range_min = 0.1;
-        frscan.range_max = 0.8;
+        frscan.range_min = 0.04;
+        frscan.range_max = 0.3;
         frscan.ranges.resize(1);
 
         flscan.header.frame_id = "flscan";
@@ -126,8 +134,8 @@ struct irFutzer
         flscan.angle_increment = 0.0;
         flscan.time_increment = 0.0;
         flscan.scan_time = .045;
-        flscan.range_min = 0.1;
-        flscan.range_max = 0.8;
+        flscan.range_min = 0.04;
+        flscan.range_max = 0.3;
         flscan.ranges.resize(1);
 
         lscan.header.frame_id = "lscan";
@@ -137,7 +145,7 @@ struct irFutzer
         lscan.time_increment = 0;
         lscan.scan_time = .045;
         lscan.range_min = dist_to_ir_center + .1;
-        lscan.range_max = dist_to_ir_center + .8;
+        lscan.range_max = dist_to_ir_center + .6;
         lscan.ranges.resize(3);
 
         rscan.header.frame_id = "rscan";
@@ -147,21 +155,22 @@ struct irFutzer
         rscan.time_increment = 0;
         rscan.scan_time = .045;
         rscan.range_min = dist_to_ir_center + .1;
-        rscan.range_max = dist_to_ir_center + .8;
+        rscan.range_max = dist_to_ir_center + .6;
         rscan.ranges.resize(3);
+        rscan.intensities.resize(3);
     }
 
     void irToLaser(const b2b::IRStamped &msg)
     {
         //=======Front Right IR========
         frscan.header.stamp = msg.header.stamp;
-        frscan.ranges[0] = msg.fwd_r;
+        frscan.ranges[0] = fwdr.update(msg.fwd_r);
         //publish the message
         frscan_pub.publish(frscan);
 
         //=======Front Left IR========
         flscan.header.stamp = msg.header.stamp;
-        flscan.ranges[0] = msg.fwd_l;
+        flscan.ranges[0] = fwdl.update(msg.fwd_l);
         //publish the message
         flscan_pub.publish(flscan);
 
@@ -175,15 +184,15 @@ struct irFutzer
 
         //=======Right IR========
         rscan.header.stamp = msg.header.stamp;
-        rscan.ranges[2] = msg.r.fwd + dist_to_ir_center;
-        rscan.ranges[1] = msg.r.mid + dist_to_ir_center;
-        rscan.ranges[0] = msg.r.bak + dist_to_ir_center;
+        rscan.ranges[2] = rfwd.update(msg.r.fwd + dist_to_ir_center);
+        rscan.ranges[1] = rmid.update(msg.r.mid + dist_to_ir_center);
+        rscan.ranges[0] = rbak.update(msg.r.bak + dist_to_ir_center);
         //publish the message
         rscan_pub.publish(rscan);
 
-        //scan_pub.publish(frscan);
-        //scan_pub.publish(flscan);
-        //scan_pub.publish(rscan);
+        scan_pub.publish(frscan);
+        scan_pub.publish(flscan);
+        scan_pub.publish(rscan);
         scan_pub.publish(lscan);
     }
 };
@@ -205,6 +214,23 @@ int main(int argc, char** argv)
 
     ros::Subscriber odom_read = n.subscribe("odom_partial", 1000, futzOdom);
     ros::Subscriber scan_read = n.subscribe("ir_raw", 1000, &irFutzer::irToLaser, &futz);
+
+    odom.pose.covariance = boost::assign::list_of
+        (1e-3)      (0)     (0)     (0)     (0)     (0)
+        (0)      (1e-3)     (0)     (0)     (0)     (0)
+        (0)      (0)     (1e6)     (0)     (0)     (0)
+        (0)      (0)     (0)     (1e6)     (0)     (0)
+        (0)      (0)     (0)     (0)     (1e6)     (0)
+        (0)      (0)     (0)     (0)     (0)     (1);
+
+    odom.twist.covariance = boost::assign::list_of
+        (1e-3)      (0)     (0)     (0)     (0)     (0)
+        (0)      (1e-3)     (0)     (0)     (0)     (0)
+        (0)      (0)     (1e6)     (0)     (0)     (0)
+        (0)      (0)     (0)     (1e6)     (0)     (0)
+        (0)      (0)     (0)     (0)     (1e6)     (0)
+        (0)      (0)     (0)     (0)     (0)     (1);
+
 
     ros::spin();
 }

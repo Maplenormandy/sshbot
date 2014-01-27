@@ -2,6 +2,6 @@
 
     <node pkg="profit" type="ros_ballseeingeye.py" name="ballseeingeye" />
 
-    <node pkg="paralympics" type="dock_states.py" name="docktest" />
+    <node pkg="paralympics" type="dock_states.py" name="docktest" output="screen" />
 
 </launch>

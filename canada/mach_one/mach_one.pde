@@ -135,26 +135,29 @@ void setup()
             0.1f, 0.8f);
     irs.l.bak.attach(IR_L_BAK);
 
-    irs.r.fwd.calibrate(0.00363762465628f, -0.0852030557814f,
+    irs.r.fwd.calibrate(0.00369894253316f, -0.975761919236f,
             0.1f, 0.8f);
     irs.r.fwd.attach(IR_R_FWD);
-    irs.r.mid.calibrate(0.00363762465628f, -0.0852030557814f,
+    irs.r.mid.calibrate(0.00382965270558f, -0.988533304527f,
             0.1f, 0.8f);
     irs.r.mid.attach(IR_R_MID);
-    irs.r.bak.calibrate(0.00363762465628f, -0.0852030557814f,
+    irs.r.bak.calibrate(0.00382557011975f, -0.908450098318f,
             0.1f, 0.8f);
     irs.r.bak.attach(IR_R_BAK);
 
     irs.fwd_l.attach(IR_FWD_L);
-    irs.fwd_l.calibrate(0.00550560406861f, 0.889300680702f,
-            0.1f, 0.8f);
+    irs.fwd_l.calibrate(0.00640927906921f, 0.00452178178792f,
+            0.04f, 0.3f);
+    irs.fwd_r.attach(IR_FWD_R);
+    irs.fwd_r.calibrate(0.00672864575128f, -0.0114986048003f,
+            0.04f, 0.3f);
 
 
     digitalWrite(ROLLER_DIR, HIGH);
     pwmWrite(ROLLER_PWM, 0);
 
-    //digitalWrite(SCREW_DIR, HIGH);
-    //pwmWrite(SCREW_PWM, 65535);
+    digitalWrite(SCREW_DIR, HIGH);
+    pwmWrite(SCREW_PWM, 0);
     
     dd.reset();
 

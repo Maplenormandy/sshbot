@@ -9,18 +9,6 @@ import threading
 from b2b.srv import *
 import threading
 
-"""
-class RollerThread(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.stopped = threading.Event()
-        self.roller_pub = rospy.Publisher('/roller_cmd', Float32)
-        self.msg = Float32(data=0.5)
-
-    def run(self):
-        while not self.stopped.wait(1.0):
-            self.roller_pub.publish(self.msg)
-"""
 
 class BallHandler():
     def __init__(self):
@@ -28,7 +16,7 @@ class BallHandler():
         self.green_queued = 0
 
         self.roller_pub = rospy.Publisher('/roller_cmd', Float32)
-        self.roller_pub.publish(Float32(data=0.5))
+        #self.roller_pub.publish(Float32(data=0.5), latch=True)
 
         self.screw_queue = ['']*90
         self.screw_ind = 0

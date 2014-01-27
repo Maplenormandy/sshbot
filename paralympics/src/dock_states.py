@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('paralympics')
 import rospy
-from geometry_msgs.msg import Twist, PointStamped, Pose
-from std_msgs.msg import Int16, Empty
+from geometry_msgs.msg import Twist, PointStamped, Pose, PoseStamped
+from std_msgs.msg import Int16, Empty, Float32
 from actionlib_tutorials.msg import FibonacciAction
 import math
 import numpy as np
@@ -11,6 +11,8 @@ from profit.msg import *
 from smach import *
 from smach_ros import *
 from b2b.srv import *
+from travel_states import *
+from nav.srv import *
 
 __all__ = ['DispenserState']
 
@@ -18,7 +20,6 @@ __all__ = ['DispenserState']
 class AlignToReactor(SensorState):
     def __init__(self, cmd_vel_pub):
         SensorState.__init__(self, '/profit/reactor_wall_raw', Wall, 0.1,
-                input_keys=['desired_dist'],
                 outcomes=['succeeded', 'preempted', 'aborted']
                 )
 
@@ -106,7 +107,7 @@ class AlignToReactor(SensorState):
                 msg = self._msg
 
             if self.overspeed:
-                for i in range(4):
+                for i in range(0):
                     vel = Twist()
                     rospy.loginfo('running')
                     rospy.sleep(0.5)
@@ -171,37 +172,41 @@ class ReactorState(StateMachine):
                 )
 
         self._cmd_vel = rospy.Publisher('/cmd_vel', Twist)
+        self.userdata.high_balls_2 = 1
 
         self.sm_high = AlignAndQueue(self._cmd_vel)
         self.sm_low = AlignAndQueue(self._cmd_vel)
-
-        self.userdata.high_dist = 0.1
-        self.userdata.low_dist = 1.0
 
         with self:
             StateMachine.add('SM_HIGH', self.sm_high,
                     remapping={
                         'balls':'high_balls',
-                        'dist':'high_dist'
                         },
                     transitions={'succeeded':'DUMP_HIGH'}
                     )
             StateMachine.add('DUMP_HIGH', DumpGreenBalls(),
                     transitions={'succeeded':'succeeded'}
                     )
-            StateMachine.add('SM_LOW', self.sm_low,
-                    remapping={
-                        'balls':'low_balls',
-                        'dist':'low_dist',
-                        },
-                    transitions={'succeeded':'DUMP_LOW'}
+            StateMachine.add('QUEUE_HIGH_EXTRA', QueueGreenBalls(),
+                    remapping={'requested':'high_balls_2'},
+                    transitions={'succeeded':'DUMP_HIGH_2'}
                     )
-            StateMachine.add('DUMP_LOW', DumpGreenBalls())
+            StateMachine.add('DUMP_HIGH_2', DumpGreenBalls(),
+                    transitions={'succeeded':'succeeded'}
+                    )
+            #StateMachine.add('SM_LOW', self.sm_low,
+            #        remapping={
+            #            'balls':'low_balls',
+            #            'dist':'low_dist',
+            #            },
+            #        transitions={'succeeded':'DUMP_LOW'}
+            #        )
+            #StateMachine.add('DUMP_LOW', DumpGreenBalls())
 
 class AlignAndQueue(Concurrence):
     def __init__(self, cmd_vel_pub):
         Concurrence.__init__(self,
-                input_keys=['dist', 'balls'],
+                input_keys=['balls'],
                 output_keys=['queued'],
                 outcomes=['succeeded', 'preempted', 'aborted'],
                 default_outcome='aborted',
@@ -213,7 +218,6 @@ class AlignAndQueue(Concurrence):
 
         with self:
             Concurrence.add('ALIGN', AlignToReactor(self._cmd_vel),
-                    remapping={'desired_dist':'dist'}
                     )
             Concurrence.add('QUEUE', QueueGreenBalls(),
                     remapping={'requested':'balls'}
@@ -314,16 +318,73 @@ class DispenserState(StateMachine):
                         'invalid':'succeeded'})
             StateMachine.add('GRAB_SILO', GrabSiloBalls(sas_pub),
                     transitions={'succeeded':'CHECK_SILO',
-                        'aborted':'ALIGN_SILO'})
+                        'aborted':'ALIGN_SILO'}
+                    )
+
+@cb_interface(
+        output_keys=['silo_pose'],
+        outcomes=['succeeded','preempted','aborted']
+        )
+def getSiloPose(ud):
+    posSrv = rospy.ServiceProxy('locator', Locator)
+    silo_pose = PoseStamped()
+    silo_pose.pose = posSrv().silo
+    silo_pose.header.stamp = rospy.Time.now()
+    silo_pose.header.frame_id = "map"
+    ud.silo_pose = silo_pose
+    return 'succeeded'
+@cb_interface(
+        output_keys=['reactor_pose'],
+        outcomes=['succeeded','preempted','aborted']
+        )
+def getReactorPose(ud):
+    posSrv = rospy.ServiceProxy('locator', Locator)
+    reactor_pose = PoseStamped()
+    reactor_pose.pose = posSrv().reactor1
+    reactor_pose.header.stamp = rospy.Time.now()
+    reactor_pose.header.frame_id = "map"
+    ud.reactor_pose = reactor_pose
+    return 'succeeded'
 
 def main():
     rospy.init_node('docktest')
+
+    sm_root = StateMachine(outcomes=['succeeded', 'preempted', 'aborted'])
+
+    with sm_root:
+        StateMachine.add('DISPENSER_FIND', CBState(getSiloPose),
+                transitions={'succeeded':'DISPENSER_TRAVEL'}
+                )
+        StateMachine.add('DISPENSER_TRAVEL', TravelState(),
+                transitions={'succeeded':'DISPENSER'},
+                remapping={'target_pose':'silo_pose'}
+                )
+
+        sm_disp = DispenserState()
+        StateMachine.add('DISPENSER', sm_disp,
+                transitions={'succeeded':'REACTOR1_FIND'}
+                )
+
+        StateMachine.add('REACTOR1_FIND', CBState(getReactorPose),
+                transitions={'succeeded':'REACTOR1_TRAVEL'}
+                )
+        StateMachine.add('REACTOR1_TRAVEL', TravelState(),
+                transitions={'succeeded':'REACTOR1'},
+                remapping={'target_pose':'reactor_pose'}
+                )
+
+        sm_reactor = ReactorState()
+        sm_root.high_balls = 3
+        StateMachine.add('REACTOR1', sm_reactor)
+
     #sm_disp = DispenserState()
     #sm_disp.execute()
-    sm_reactor = ReactorState()
-    sm_reactor.userdata.high_balls = 4
-    sm_reactor.userdata.low_balls = 1
-    sm_reactor.execute()
+    #sm_reactor = ReactorState()
+    #sm_reactor.userdata.high_balls = 3
+    #sm_reactor.userdata.low_balls = 1
+    #sm_reactor.execute()
+
+    sm_root.execute()
 
 if __name__=='__main__':
     main()

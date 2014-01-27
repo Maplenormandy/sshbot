@@ -32,8 +32,10 @@ class BallSeeingEye:
     LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0), 'G':(0,0,255)}
 
     def __init__(self, ballCb=print, wallCb=print,
-            camera=1, debug=False, quickstart = False):
+            camera=2, debug=False, quickstart = False):
         self.cap = cv2.VideoCapture(camera)
+        if not self.cap.isOpened():
+            self.cap = cv2.VideoCapture(camera-1)
         print("Setting up camera feed...")
         time.sleep(1)
 
