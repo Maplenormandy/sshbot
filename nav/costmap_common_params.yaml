@@ -1,14 +1,5 @@
 max_obstacle_height: 0.3556 
 obstacle_range: 0.3
-raytrace_range: 1.0
+raytrace_range: 0.8
 #footprint: [[x0, y0], [x1, y1], ... [xn, yn]]
 robot_radius: 0.18
-inflation_radius: 0.55
-
-observation_sources: lscan rscan flscan frscan
-#observation_sources: flscan frscan
-
-lscan: {sensor_frame: lscan, data_type: LaserScan, topic: lscan, marking: true, clearing: true}
-rscan: {sensor_frame: rscan, data_type: LaserScan, topic: rscan, marking: true, clearing: true}
-flscan: {sensor_frame: flscan, data_type: LaserScan, topic: flscan, marking: true, clearing: true}
-frscan: {sensor_frame: frscan, data_type: LaserScan, topic: frscan, marking: true, clearing: true}

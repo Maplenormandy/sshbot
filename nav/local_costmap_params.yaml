@@ -3,8 +3,17 @@ local_costmap:
   robot_base_frame: base_link
   update_frequency: 20.0
   publish_frequency: 2.0
+  inflation_radius: 0.2
   static_map: false
   rolling_window: true
-  width: 2.0
-  height: 2.0
-  resolution: 0.01
+  width: 1.0
+  height: 1.0
+  resolution: 0.06
+
+  observation_sources: lscan rscan flscan frscan
+  #observation_sources: flscan frscan
+ 
+  lscan: {sensor_frame: lscan, data_type: LaserScan, topic: lscan, marking: true, clearing: true}
+  rscan: {sensor_frame: rscan, data_type: LaserScan, topic: rscan, marking: true, clearing: true}
+  flscan: {sensor_frame: flscan, data_type: LaserScan, topic: flscan, marking: true, clearing: true}
+  frscan: {sensor_frame: frscan, data_type: LaserScan, topic: frscan, marking: true, clearing: true}
