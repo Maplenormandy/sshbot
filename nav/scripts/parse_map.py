@@ -23,7 +23,7 @@ class locator():
         self.max_y = 0
         walls = []
         i = 0
-        self.robotRadius = 7.0*2.54
+        self.robotRadius = 8.5*2.54
         self.resolution = 0.01
 
         parts = mapString.split(":")
