@@ -76,12 +76,12 @@ int main(int argc, char** argv){
         broadcaster.sendTransform(
                 tf::StampedTransform(
                     tf::Transform(tf::Quaternion(0, 0, 0, 1),
-                        tf::Vector3(0.14605, -0.117475, 0.0)),
+                        tf::Vector3(0.14605, 0.117475, 0.0)),
                     ros::Time::now(),"base_link", "flscan"));
         broadcaster.sendTransform(
                 tf::StampedTransform(
                     tf::Transform(tf::Quaternion(0, 0, 0, 1),
-                        tf::Vector3(0.14605, 0.117475, 0.0)),
+                        tf::Vector3(0.14605, -0.117475, 0.0)),
                     ros::Time::now(),"base_link", "frscan"));
 
         // TODO Fix these values
