@@ -13,7 +13,7 @@ ros::Publisher* p_odom_pub;
 tf::TransformBroadcaster* p_odom_broadcaster;
 
 const double pi = boost::math::constants::pi<double>();
-const double irRange = 0.55;
+const float irRange = 0.7f;
 
 nav_msgs::Odometry odom;
 
@@ -126,7 +126,7 @@ struct irFutzer
         frscan.time_increment = 0.0;
         frscan.scan_time = .045;
         frscan.range_min = 0.04;
-        frscan.range_max = 0.3;
+        frscan.range_max = 0.26;
         frscan.ranges.resize(1);
 
         flscan.header.frame_id = "flscan";
@@ -136,7 +136,7 @@ struct irFutzer
         flscan.time_increment = 0.0;
         flscan.scan_time = .045;
         flscan.range_min = 0.04;
-        flscan.range_max = 0.3;
+        flscan.range_max = 0.26;
         flscan.ranges.resize(1);
 
         lscan.header.frame_id = "lscan";
