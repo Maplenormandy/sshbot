@@ -120,7 +120,7 @@ void setup()
     pac.attach(PAC_SERVO);
     pac.write(70);
     gate_g.attach(GATE_G_SERVO);
-    gate_g.write(0);
+    gate_g.write(15);
     gate_r.attach(GATE_R_SERVO);
 
     irs.l.fwd.calibrate(0.00379680814028f, -0.37963064697f,
@@ -175,7 +175,10 @@ void loop()
     // Precise timekeeping
     time = micros();
 
-    dd.loop();
+    if (seq%2 == 0)
+    {
+        dd.loop();
+    }
     if (seq%3 == 0)
     {
         irs.loop();

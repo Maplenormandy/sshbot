@@ -12,5 +12,6 @@
     <rosparam file="$(find nav)/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find nav)/global_costmap_params.yaml" command="load" />
     <rosparam file="$(find nav)/base_local_planner_params.yaml" command="load" />
+    <rosparam file="$(find nav)/move_base_params.yaml" command="load" />
   </node>
 </launch>

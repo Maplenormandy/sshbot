@@ -2,6 +2,7 @@
 import roslib; roslib.load_manifest('b2b')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped, PointStamped
+from std_msgs.msg import Empty
 from b2b.msg import IRStamped
 import math
 import tf
@@ -13,12 +14,16 @@ def cmd_vel_cb(msg):
     op.twist.linear.x = msg.linear.x
     op.twist.angular.z = msg.angular.z
 
+def reset_odom(msg):
+    global op
+    op = TwistStamped()
 
 def main():
     global op
     rospy.init_node('pretend_bot')
     r = rospy.Rate(60)
     rospy.Subscriber('/cmd_vel', Twist, cmd_vel_cb)
+    rospy.Subscriber('/odom_reset', Empty, reset_odom)
     pub = rospy.Publisher('/odom_partial', TwistStamped)
     pub2 = rospy.Publisher('/ir_raw', IRStamped)
 

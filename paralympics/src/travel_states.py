@@ -28,25 +28,30 @@ class BallTracker(SensorState):
         self.chaser_state = chaser_state
         self.move_state = move_state
 
+        self.balls = None
+        self.ball_header = None
+
         self.tf_listener = tf.TransformListener()
 
     def loop(self, msg, ud):
+        self.balls = list(map(lambda b: b.point, msg.balls))
+        self.balls.sort(key=lambda b: -math.hypot(b.x,b.y))
+        self.ball_header = msg.header
+
         return None
-        self.chaser_state.balls = map(lambda b: b.point, msg.balls)
-        self.chaser_state.ball_header = msg.header
 
         if len(msg.balls)>0:
             self.move_state.found_balls()
-            self.chaser_state.reset_ball_goal()
+            self.chaser_state.set_ball_goal(self.balls.pop(),
+                    self.ball_header, len(self.balls))
+        else:
+            self.chaser_state.set_ball_goal(None, None, 0)
 
 class BallChaser(State):
     def __init__(self, action_client, timeout):
         State.__init__(self,
                 outcomes=['succeeded', 'no_more_balls', 'preempted', 'aborted']
                 )
-
-        self.balls = None
-        self.ball_header = None
 
         self.action_client = action_client
 
@@ -55,48 +60,43 @@ class BallChaser(State):
 
         self.goal = MoveBaseGoal()
 
-        self.t = tf.TransformListener()
-
-
     def execute(self, ud):
-        self.reset_ball_goal()
-
         while True:
             self._trigger_cond.acquire()
             self._trigger_cond.wait(self._timeout)
             self._trigger_cond.release()
 
-            if self.goal_status == GoalStatus.SUCCEEDED:
-                if len(self.balls)>0:
+            if self.goal_status == GoalStatus.SUCCEEDED or self.goal_status == GoalStatus.PREEMPTED:
+                if self.len_balls>0:
                     return 'succeeded'
                 else:
                     return 'no_more_balls'
 
-            elif self.goal_status == GoalStatus.PREEMPTED or self.preempt_requested():
+            elif self.preempt_requested():
                 self.action_client.cancel_goal()
                 self.service_preempt()
                 return 'preempted'
             elif self.goal_status != None:
                 return 'aborted'
 
-    def reset_ball_goal(self):
-        if len(self.balls)>0:
-            rospy.loginfo(self.balls)
+    def set_ball_goal(self, ball, header, len_balls):
+        self.len_balls = len_balls
+
+        if len_balls>0:
             self.goal_status = None
             target_pose = PoseStamped()
-            target_pose.header = self.ball_header
-            target_pose.pose.position = self.balls.pop()
-            rospy.loginfo(self.t.getFrameStrings())
-            pos, orient = self.t.lookupTransform("odom", "base_link", rospy.Time())
-            target_pose.pose.orientation.x = orient[0]
-            target_pose.pose.orientation.y = orient[1]
-            target_pose.pose.orientation.z = orient[2]
-            target_pose.pose.orientation.w = orient[3]
+            target_pose.header = header
+            target_pose.pose.position = ball
+            target_pose.pose.orientation.w = 1.0
 
             self.goal.target_pose = target_pose
 
             self.action_client.cancel_goal()
             self.action_client.send_goal(self.goal, self.done_cb)
+        else:
+            self.action_client.cancel_goal()
+            self.goal_status = GoalStatus.SUCCEEDED
+
 
     def done_cb(self, term_state, result):
         self.goal_status = term_state
@@ -133,14 +133,14 @@ class Move(State):
             self._trigger_cond.wait(self._timeout)
             self._trigger_cond.release()
 
-            if self.goal_status == GoalStatus.SUCCEEDED:
+            if self.ball_status:
+                return 'balls_found'
+            elif self.goal_status == GoalStatus.SUCCEEDED:
                 return 'succeeded'
             elif self.goal_status == GoalStatus.PREEMPTED or self.preempt_requested():
                 self.action_client.cancel_goal()
                 self.service_preempt()
                 return 'preempted'
-            elif self.ball_status == True:
-                return 'balls_found'
             elif self.goal_status != None:
                 return 'aborted'
 
@@ -161,11 +161,14 @@ class Move(State):
 
 
 class PretendActionClient():
+    def __init__(self):
+        self.pub = rospy.Publisher('/ballgoal', PoseStamped)
+
     def cancel_goal(self):
         pass
 
     def send_goal(self, goal, done_cb):
-        rospy.loginfo(goal)
+        self.pub.publish(goal.target_pose)
 
     def wait_for_server(self):
         pass
@@ -240,8 +243,8 @@ def main():
     sm_travel = TravelState()
     target_pose = PoseStamped()
     target_pose.header.stamp = rospy.Time.now()
-    target_pose.header.frame_id = "map"
-    target_pose.pose.position.x = 1.0
+    target_pose.header.frame_id = "base_link"
+    target_pose.pose.position.x = -0.5
     target_pose.pose.orientation.z = 1.0
     sm_travel.userdata.target_pose = target_pose
     sm_travel.execute()

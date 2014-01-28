@@ -38,10 +38,10 @@ class BallHandler():
         rospy.loginfo('dumping ' + req.color)
         resp = BallDumpResponse()
         msg = Int16()
-        msg.data = 0
+        msg.data = 15
 
         if req.color=='g':
-            msg.data = 90
+            msg.data = 180
             self.gate_g_pub.publish(msg)
             rospy.sleep(1.0)
 
@@ -50,7 +50,7 @@ class BallHandler():
             self.green_queued = 0
             self.ball_lock.release()
 
-            msg.data = 0
+            msg.data = 15
             self.gate_g_pub.publish(msg)
         elif req.color=='r':
             self.gate_r_pub.publish(msg)

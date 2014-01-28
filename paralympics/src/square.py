@@ -7,6 +7,8 @@ import numpy as np
 from sensor_state import SensorState
 from smach import *
 
+__all__ = ['DriveStraight']
+
 class DriveStraight(SensorState):
     def __init__(self, cmd_vel_pub):
         SensorState.__init__(self, '/odom_partial', TwistStamped, 0.1,

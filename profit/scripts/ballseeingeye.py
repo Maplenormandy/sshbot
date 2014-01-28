@@ -144,7 +144,8 @@ class BallSeeingEye:
         thresholdGreen = self.threshold('G', hsv)
 
 
-        cv2.imshow('G', thresholdGreen)
+        if self.debug:
+            cv2.imshow('G', thresholdGreen)
 
         ballsList = []
         for thresholdImg in [(thresholdRed, 'r'), (thresholdGreen,'g')]:
