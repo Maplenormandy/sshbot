@@ -11,6 +11,7 @@ const uint8 MOTOR_R_DIR = 30; // OUTPUT
 
 const uint8 SAS_PWM = 5;
 const uint8 SAS_DIR = 4;
+const uint8 SAS_CUR = 10;
 
 const uint8 ROLLER_PWM = 7;
 const uint8 ROLLER_DIR = 6;

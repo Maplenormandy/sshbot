@@ -9,7 +9,8 @@ from smach import *
 __all__ = ['SensorState']
 
 class SensorState(State):
-    def __init__(self, topic, msg_type, timeout, loopFn=None,
+    def __init__(self, topic, msg_type, timeout,
+            loopFn=None, timeoutFn=None,
             outcomes=['succeeded', 'preempted', 'aborted'],
             input_keys=[], output_keys=[]):
 
@@ -20,6 +21,7 @@ class SensorState(State):
                 )
 
         self._loop = loopFn
+        self._timeoutFn = timeoutFn
         self._timeout = timeout
         self._trigger_cond = threading.Condition()
         self._topic = topic
@@ -55,10 +57,22 @@ class SensorState(State):
 
                 self._msg = None
                 msg = None
+            else:
+                ret = self.timeout(ud)
+                if ret:
+                    sub.unregister()
+                    ud.msg_out = None
+                    return ret
 
 
     def loop(self, msg, ud):
-        self._loop(msg, ud)
+        return self._loop(msg, ud)
+
+    def timeout(self, ud):
+        if self._timeoutFn != None:
+            return self._timeoutFn(ud)
+        else:
+            return None
 
     def _msg_cb(self, msg):
         self._msg = msg

@@ -111,8 +111,8 @@ struct irFutzer
         rfwd(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
         rmid(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
         rbak(0.1+dist_to_ir_center, irRange+dist_to_ir_center),
-        fwdl(0.04, 0.26),
-        fwdr(0.04, 0.26)
+        fwdl(0.04, 0.22),
+        fwdr(0.04, 0.22)
     {
         lscan_pub = n.advertise<sensor_msgs::LaserScan>("lscan", 150);
         rscan_pub = n.advertise<sensor_msgs::LaserScan>("rscan", 150);
@@ -128,7 +128,7 @@ struct irFutzer
         frscan.time_increment = 0.0;
         frscan.scan_time = .045;
         frscan.range_min = 0.04;
-        frscan.range_max = 0.26;
+        frscan.range_max = 0.22;
         frscan.ranges.resize(1);
 
         flscan.header.frame_id = "flscan";
@@ -138,7 +138,7 @@ struct irFutzer
         flscan.time_increment = 0.0;
         flscan.scan_time = .045;
         flscan.range_min = 0.04;
-        flscan.range_max = 0.26;
+        flscan.range_max = 0.22;
         flscan.ranges.resize(1);
 
         fscan.header.frame_id = "fscan";
@@ -148,7 +148,7 @@ struct irFutzer
         fscan.time_increment = 0.0;
         fscan.scan_time = .045;
         fscan.range_min = 0.04+dist_to_ir_center_fwd;
-        fscan.range_max = 0.26+dist_to_ir_center_fwd;
+        fscan.range_max = 0.22+dist_to_ir_center_fwd;
         fscan.ranges.resize(2);
 
         lscan.header.frame_id = "lscan";
@@ -178,6 +178,7 @@ struct irFutzer
         float fr = fwdr.update(msg.fwd_r);
         //=======Front Right IR========
         frscan.header.stamp = msg.header.stamp;
+        frscan.header.seq = msg.header.seq;
         frscan.ranges[0] = fr;
         //publish the message
         frscan_pub.publish(frscan);
@@ -185,12 +186,14 @@ struct irFutzer
         float fl = fwdl.update(msg.fwd_l);
         //=======Front Left IR========
         flscan.header.stamp = msg.header.stamp;
+        flscan.header.seq = msg.header.seq;
         flscan.ranges[0] = fl;
         //publish the message
         flscan_pub.publish(flscan);
 
         //=======Front IR========
         fscan.header.stamp = msg.header.stamp;
+        fscan.header.seq = msg.header.seq;
         fscan.ranges[0] = fl+dist_to_ir_center_fwd;
         fscan.ranges[1] = fr+dist_to_ir_center_fwd;
         //publish the message
@@ -198,6 +201,7 @@ struct irFutzer
 
         //=======Left IR========
         lscan.header.stamp = msg.header.stamp;
+        lscan.header.seq = msg.header.seq;
         lscan.ranges[0] = lfwd.update(msg.l.fwd + dist_to_ir_center);
         lscan.ranges[1] = lmid.update(msg.l.mid + dist_to_ir_center);
         lscan.ranges[2] = lbak.update(msg.l.bak + dist_to_ir_center);
@@ -206,14 +210,15 @@ struct irFutzer
 
         //=======Right IR========
         rscan.header.stamp = msg.header.stamp;
+        rscan.header.seq = msg.header.seq;
         rscan.ranges[2] = rfwd.update(msg.r.fwd + dist_to_ir_center);
         rscan.ranges[1] = rmid.update(msg.r.mid + dist_to_ir_center);
         rscan.ranges[0] = rbak.update(msg.r.bak + dist_to_ir_center);
         //publish the message
         rscan_pub.publish(rscan);
 
-        scan_pub.publish(frscan);
-        scan_pub.publish(flscan);
+        //scan_pub.publish(frscan);
+        //scan_pub.publish(flscan);
         scan_pub.publish(fscan);
         scan_pub.publish(rscan);
         scan_pub.publish(lscan);

@@ -117,11 +117,13 @@ void setup()
     nh.subscribe(gate_r_cmd);
 
     kick.attach(KICK_SERVO);
+    kick.write(0);
     pac.attach(PAC_SERVO);
     pac.write(70);
     gate_g.attach(GATE_G_SERVO);
-    gate_g.write(0);
+    gate_g.write(15);
     gate_r.attach(GATE_R_SERVO);
+    gate_r.write(90);
 
     irs.l.fwd.calibrate(0.00379680814028f, -0.37963064697f,
             0.1f, 0.8f);
@@ -158,6 +160,9 @@ void setup()
 
     digitalWrite(SCREW_DIR, HIGH);
     pwmWrite(SCREW_PWM, 0);
+
+    digitalWrite(SAS_DIR, HIGH);
+    pwmWrite(SAS_PWM, 0);
     
     dd.reset();
 

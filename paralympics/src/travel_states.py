@@ -5,6 +5,7 @@ from geometry_msgs.msg import Twist, Pose, PointStamped, PoseStamped
 from std_msgs.msg import Header
 from profit.msg import *
 from move_base_msgs.msg import *
+from b2b.msg import IRStamped, IRArray
 import threading
 import random
 import math
@@ -19,98 +20,134 @@ import tf
 __all__ = ['TravelState']
 
 
-class BallTracker(SensorState):
-    def __init__(self, move_state, chaser_state):
+class BallWatcher(SensorState):
+    def __init__(self, move_state):
         SensorState.__init__(self, '/profit/balls', BallArray, 0.2,
-                outcomes=['preempted']
+                output_keys=['ball_pose'],
+                outcomes=['found_balls', 'preempted']
                 )
 
-        self.chaser_state = chaser_state
         self.move_state = move_state
-
-        self.tf_listener = tf.TransformListener()
-
-    def loop(self, msg, ud):
-        return None
-        self.chaser_state.balls = map(lambda b: b.point, msg.balls)
-        self.chaser_state.ball_header = msg.header
-
-        if len(msg.balls)>0:
-            self.move_state.found_balls()
-            self.chaser_state.reset_ball_goal()
-
-class BallChaser(State):
-    def __init__(self, action_client, timeout):
-        State.__init__(self,
-                outcomes=['succeeded', 'no_more_balls', 'preempted', 'aborted']
-                )
-
         self.balls = None
         self.ball_header = None
 
-        self.action_client = action_client
+        self.failed_balls = 0
 
-        self._timeout = timeout
-        self._trigger_cond = threading.Condition()
+        self.seq = 0
 
-        self.goal = MoveBaseGoal()
+    def loop(self, msg, ud):
+        return None
 
-        self.t = tf.TransformListener()
+        self.seq += 1
 
+        if self.failed_balls < 1:
+            if len(msg.balls)>0:
+                self.move_state.action_client.cancel_goal()
+                return 'found_balls'
+
+        if self.seq % 32 == 0:
+            self.failed_balls -= 1
+            if self.failed_balls < 0:
+                self.failed_balls = 0
 
     def execute(self, ud):
-        self.reset_ball_goal()
+        self.failed_balls = 0
+        return SensorState.execute(self, ud)
 
-        while True:
-            self._trigger_cond.acquire()
-            self._trigger_cond.wait(self._timeout)
-            self._trigger_cond.release()
 
-            if self.goal_status == GoalStatus.SUCCEEDED:
-                if len(self.balls)>0:
+class ChaseBalls(SensorState):
+    def __init__(self, cmd_vel_pub):
+        SensorState.__init__(self, '/profit/balls', BallArray, 0.2)
+        self._cmd_vel = cmd_vel_pub
+
+        self.irlock = threading.RLock()
+        self.irmsg = None
+
+    def updateIRs(self, msg):
+        self.irlock.acquire()
+        self.irmsg = msg
+        self.irlock.release()
+
+    def execute(self, ud):
+        self.xl = 0.0
+        self.rl = 0.0
+        self.lfl = 0.0
+        self.lfdl = 0.0
+        self.lostframes = 0
+        self.vel = Twist()
+
+        return SensorState.execute(self, ud)
+
+    def loop(self, msg, ud):
+        walled = False
+
+        self.irlock.acquire()
+        irmsg = self.irmsg
+        self.irlock.release()
+
+        vel = Twist()
+
+        if irmsg != None:
+            if irmsg.fwd_l < 0.08:
+                vel.angular.z = -0.2
+                walled=True
+            elif irmsg.fwd_r < 0.08:
+                vel.angular.z = 0.2
+                walled=True
+            elif irmsg.l.fwd < 0.16:
+                lf = np.clip(irmsg.l.fwd, 0.05, 0.65) - 0.16
+                lfd = (lf-self.lfl) * 16.0
+
+                vel.linear.x = 0.3 + lf
+                vel.angular.z = np.clip(lf+lfd*0.25, -0.6, 0.6)
+
+                self.lfl = lf
+                self.lfdl = lfd
+                walled=True
+            elif irmsg.r.fwd < 0.16:
+                lf = np.clip(irmsg.r.fwd, 0.05, 0.65) - 0.16
+                lfd = (lf-self.lfl) * 16.0
+
+                vel.linear.x = 0.3 + lf
+                vel.angular.z = np.clip(lf+lfd*0.25, -0.6, 0.6)
+
+                self.lfl = lf
+                self.lfdl = lfd
+                walled=True
+
+
+        if not walled:
+            self.lfl = 0.0
+            self.lfdl = 0.0
+            if len(msg.balls)==0:
+                self.lostframes += 1
+                if self.lostframes > 12:
+                    vel = Twist()
+                    self._cmd_vel.publish(vel)
                     return 'succeeded'
                 else:
-                    return 'no_more_balls'
+                    self.vel.linear.x *= 0.75
+                    self.vel.angular.z *= 0.3
+            else:
+                self.lostframes = 0
+                ball = max(msg.balls,
+                        key=lambda b: b.point.y-abs(b.point.x)*0.25)
 
-            elif self.goal_status == GoalStatus.PREEMPTED or self.preempt_requested():
-                self.action_client.cancel_goal()
-                self.service_preempt()
-                return 'preempted'
-            elif self.goal_status != None:
-                return 'aborted'
 
-    def reset_ball_goal(self):
-        if len(self.balls)>0:
-            rospy.loginfo(self.balls)
-            self.goal_status = None
-            target_pose = PoseStamped()
-            target_pose.header = self.ball_header
-            target_pose.pose.position = self.balls.pop()
-            rospy.loginfo(self.t.getFrameStrings())
-            pos, orient = self.t.lookupTransform("odom", "base_link", rospy.Time())
-            target_pose.pose.orientation.x = orient[0]
-            target_pose.pose.orientation.y = orient[1]
-            target_pose.pose.orientation.z = orient[2]
-            target_pose.pose.orientation.w = orient[3]
+                self.vel.linear.x = self.vel.linear.x*0.5 + 0.15
+                self.vel.angular.z = np.clip(
+                        self.vel.angular.z*0.5 - ball.point.x*2.0,
+                        -0.8, 0.8)
 
-            self.goal.target_pose = target_pose
-
-            self.action_client.cancel_goal()
-            self.action_client.send_goal(self.goal, self.done_cb)
-
-    def done_cb(self, term_state, result):
-        self.goal_status = term_state
-
-        self._trigger_cond.acquire()
-        self._trigger_cond.notify()
-        self._trigger_cond.release()
-
+            self._cmd_vel.publish(self.vel)
+        else:
+            self._cmd_vel.publish(vel)
 
 class Move(State):
     def __init__(self, action_client, timeout):
         State.__init__(self,
                 input_keys=['target_pose'],
-                outcomes=['succeeded', 'balls_found', 'preempted', 'aborted']
+                outcomes=['succeeded', 'preempted', 'aborted']
                 )
 
         self.action_client = action_client
@@ -139,18 +176,9 @@ class Move(State):
                 self.action_client.cancel_goal()
                 self.service_preempt()
                 return 'preempted'
-            elif self.ball_status == True:
-                return 'balls_found'
             elif self.goal_status != None:
+                self.action_client.cancel_goal()
                 return 'aborted'
-
-    def found_balls(self):
-        self.ball_status = True
-        self.action_client.cancel_goal()
-
-        self._trigger_cond.acquire()
-        self._trigger_cond.notify()
-        self._trigger_cond.release()
 
     def done_cb(self, term_state, result):
         self.goal_status = term_state
@@ -161,76 +189,85 @@ class Move(State):
 
 
 class PretendActionClient():
+    def __init__(self):
+        self.pub = rospy.Publisher('/ballgoal', PoseStamped)
+        self.goal = None
+
     def cancel_goal(self):
-        pass
+        rospy.loginfo(self.goal)
 
     def send_goal(self, goal, done_cb):
-        rospy.loginfo(goal)
+        self.goal = goal
+        self.pub.publish(goal.target_pose)
 
     def wait_for_server(self):
         pass
 
 
-class TravelState(Concurrence):
+class TravelState(StateMachine):
     def __init__(self):
-        Concurrence.__init__(self,
+        StateMachine.__init__(self,
                 input_keys=['target_pose'],
-                outcomes=['succeeded', 'preempted', 'aborted'],
+                outcomes=['succeeded', 'preempted', 'aborted']
+                )
+
+        self.sm_move = Concurrence(
+                input_keys=['target_pose', 'msg_ball_out'],
+                output_keys=['msg_ball_in'],
+                outcomes=['succeeded', 'found_balls', 'preempted', 'aborted'],
                 default_outcome='aborted',
                 child_termination_cb = self.child_termination_cb,
                 outcome_cb = self.outcome_cb
                 )
 
-        self.sm_move = StateMachine(
-                input_keys=['target_pose'],
-                outcomes=['succeeded', 'preempted', 'aborted']
-                )
+        self._cmd_vel = rospy.Publisher('/cmd_vel', Twist)
+
+        self.userdata.msg_ball_out = None
 
         self.action_client = SimpleActionClient('move_base', MoveBaseAction)
         #self.action_client = PretendActionClient()
 
         self.move_state = Move(self.action_client, 0.2)
-        self.chaser_state = BallChaser(self.action_client, 0.2)
+        self.chaser_state = ChaseBalls(self._cmd_vel)
         self.userdata.msg_in = None
 
-        self.watcher = BallTracker(self.move_state, self.chaser_state)
+        self.watcher = BallWatcher(self.move_state)
+        self._ir_pub = rospy.Subscriber('/ir_raw', IRStamped,
+                self.chaser_state.updateIRs)
 
         with self.sm_move:
-            StateMachine.add('MOVE_TO_GOAL', self.move_state,
-                    transitions={'balls_found':'CHASE_BALLS'}
-                    )
-            StateMachine.add('CHASE_BALLS', self.chaser_state,
-                    transitions={
-                        'no_more_balls':'MOVE_TO_GOAL',
-                        'succeeded':'CHASE_BALLS'
+            Concurrence.add('BALL_WATCHER', self.watcher,
+                    remapping={
+                        'msg_in':'msg_ball_out',
+                        'msg_out':'msg_ball_in'
                         }
                     )
+            Concurrence.add('MOVE_TO_GOAL', self.move_state)
 
         with self:
-            Concurrence.add('SM_MOVE', self.sm_move)
-            Concurrence.add('BALL_WATCHER', self.watcher)
+            StateMachine.add('SM_MOVE', self.sm_move,
+                    transitions={'found_balls':'CHASE_BALLS'}
+                    )
+            StateMachine.add('CHASE_BALLS', self.move_state,
+                    transitions={'succeeded':'SM_MOVE'},
+                    remapping={'msg_in':'msg_ball_in'}
+                    )
 
     def execute(self, ud=None):
         if ud==None:
             ud = self.userdata
         self.action_client.wait_for_server()
 
-        return Concurrence.execute(self, ud)
+        return StateMachine.execute(self, ud)
 
     def child_termination_cb(self, outmap):
-        if outmap['SM_MOVE']!=None:
-            self.watcher.request_preempt()
-            return True
-        else:
-            rospy.logwarn('Unexpected termination')
-            return False
+        return True
 
     def outcome_cb(self, outmap):
-        return outmap['SM_MOVE']
-
-
-
-
+        if outmap['BALL_WATCHER'] == 'found_balls':
+            return 'found_balls'
+        else:
+            return outmap['MOVE_TO_GOAL']
 
 
 
@@ -240,11 +277,31 @@ def main():
     sm_travel = TravelState()
     target_pose = PoseStamped()
     target_pose.header.stamp = rospy.Time.now()
-    target_pose.header.frame_id = "map"
-    target_pose.pose.position.x = 1.0
+    target_pose.header.frame_id = "base_link"
+    target_pose.pose.position.x = -0.5
     target_pose.pose.orientation.z = 1.0
     sm_travel.userdata.target_pose = target_pose
     sm_travel.execute()
+
+    """
+    cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist)
+
+    sm_root = StateMachine(outcomes=['succeeded', 'preempted', 'aborted'])
+    sm_root.userdata.msg_out = None
+
+    chaser_state = ChaseBalls(cmd_vel_pub)
+
+    ir_pub = rospy.Subscriber('/ir_raw', IRStamped,
+            chaser_state.updateIRs)
+
+    with sm_root:
+        StateMachine.add('CHASE_BALLS', chaser_state,
+                remapping={'msg_in':'msg_out',
+                    'msg_out':'msg_in'})
+
+
+    sm_root.execute()
+    """
 
 if __name__=='__main__':
     main()

@@ -110,7 +110,7 @@ class BallSeeingEye:
             tealWalls = self.wallsFind(hsv, frame, 'G')
             if not tealWalls == None:
                 wallsList.append(tealWalls)
-                forbidden.append(tealWalls)
+                #forbidden.append(tealWalls)
 
             # Find BALLS
             ballsList = self.ballsFind(hsv, frame, forbidden)
@@ -144,7 +144,8 @@ class BallSeeingEye:
         thresholdGreen = self.threshold('G', hsv)
 
 
-        cv2.imshow('G', thresholdGreen)
+        if self.debug:
+            cv2.imshow('G', thresholdGreen)
 
         ballsList = []
         for thresholdImg in [(thresholdRed, 'r'), (thresholdGreen,'g')]:

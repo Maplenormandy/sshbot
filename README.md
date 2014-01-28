@@ -11,7 +11,7 @@ The username/password for the tablet is sshb:sshb
 
 # How to launch our robot, The Definitive Guide
 
-This guide is up to date as of 1/25.
+This guide is up to date as of 1/28.
 
 First, since I accidentally updated ROS (really sorry guys!), run
 
@@ -26,26 +26,31 @@ To run the bot, in separate terminals run:
 
     roscore
     roslaunch b2b bridge.launch
+    rosrun nav parse_map.py
+    rosrun profit ros_ballseeingeye.py
 
-To run the alignment code, run:
+Make sure you turn on the robot at this point
 
-    roslaunch paralympics align_reactor.launch
-
-To run gmapping (SLAM), run:
-
-    roslaunch nav gmap.launch
-
-To run AMCL (localization). Please note this may not actually work as the right IRs are not working. TODO would be to fix msg_parser.cpp in b2b and remove the right IR data and hope it works.
+To start the nav stack:
 
     roslaunch nav move_base.launch
+    roslaunch nav amcl_diff.launch
 
-Please note that these three launch files are currently mutually exclusive.
+Alternatively, to run a fake bot, run this instead:
 
-If you want to run on a simulated robot, run
+    roscore
+    roslaunch b2b pretend.launch
+    rosrun nav parse_map.py
+    roslaunch nav fake.launch
+    rosrun profit ros_ballseeingeye.py
 
-    rosrun b2b pretend_bot.py
+To run the whole state machine, do
 
-Instead of running bridge.launch.
+    rosrun paralympics dock_states.py
+
+To run just the travel state (look at the main() function to see how to test individual states)
+
+    rosrun paralympics travel_states.py
 
 If you want to visualize the odometry/pose of the robot, run
 

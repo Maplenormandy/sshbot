@@ -15,6 +15,7 @@ void pinSetup(void)
 
     pinMode(SAS_PWM, PWM);
     pinMode(SAS_DIR, OUTPUT);
+    pinMode(SAS_CUR, INPUT);
 
     pinMode(SCREW_PWM, PWM);
     pinMode(SCREW_DIR, OUTPUT);

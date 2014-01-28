@@ -1,10 +1,11 @@
-uint8 PWM_PIN = 7;
-uint8 DIR_PIN = 6;
+uint8 PWM_PIN = 5;
+uint8 DIR_PIN = 4;
 
 void setup()
 {
     pinMode(PWM_PIN, PWM);
     pinMode(DIR_PIN, OUTPUT);
+    pinMode(10, INPUT);
     digitalWrite(DIR_PIN, HIGH);
 }
 
@@ -31,7 +32,7 @@ void loop()
           {
             bak += times_bak[j];
           }
-          SerialUSB.println("bak");
+          SerialUSB.print("bak");
           SerialUSB.println(bak/4);
         }
         else
@@ -47,14 +48,13 @@ void loop()
           {
             fwd += times_fwd[j];
           }
-          SerialUSB.println("fwd");
+          SerialUSB.print("fwd");
           SerialUSB.println(fwd/4);
         }
         fwd = !fwd;
-    }
-    
-    
+    }   
 
-    pwmWrite(PWM_PIN, 10000);
+    pwmWrite(PWM_PIN, 20000);
+    SerialUSB.println(analogRead(10));
     delay(30);
 }
