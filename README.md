@@ -26,6 +26,7 @@ To run the bot, in separate terminals run:
 
     roscore
     roslaunch b2b bridge.launch
+    python ~/catkin_ws/src/botclient_test_server/Python/botclient.py  #the Botclient server, which will send the mapString to parse_map.py
     rosrun nav parse_map.py
     rosrun profit ros_ballseeingeye.py
 

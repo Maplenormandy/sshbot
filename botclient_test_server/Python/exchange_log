@@ -1,0 +1,60 @@
+benbot: (connects)
+response: "connected"
+
+alyssabot: (connects)
+reponse: "connected"
+
+admin: (connects)
+response: "connected"
+
+admin: {"token":"admintoken", "BALLS":["rrgrrgrgrgggrr"]}done\n
+reponse: every robot connected receives {"BALLS":["rrgrrgrgrgggrr"]}
+
+admin: {"token":"admintoken", "WALLS":[("X","Y"),("X","Y"),("X","Y")]}done\n
+response: every robot connected receives {"WALLS":[("X","Y")...]}
+
+admin: ......................."STARTPOS":[("X","Y"),"<angle>"]}done\n
+response: ^look up
+
+admin: ......................."SILO":[("X","Y")]}done\n
+reponse: ^yeah
+
+admin: ......................."REACTORS":[("X","Y"),("X","Y"),...]}done\n
+response: ^^
+
+admin: ......................."GAMESTATE":["start"]}done\n
+response: ^^
+
+benbot:"{"token":"myveryspecialtoken","a":["Gyro","25"]}done\n
+reponse: nothing, the command gets put into the server's queue
+
+benbot:"{"token":"myveryspecialtoken","c":["Speed","50"]}done\n
+response: nothing, the command gets put into the server's queue
+
+alyssabot:"{"token":"thetoken","a":["Gyro","25"]}done\n          //they both started in the same position...
+response: nothing, the command gets put into the server's queue
+
+botview1: (connects)
+
+botview1: "set user benbot"
+
+botview1: "n"
+response:"{["Gyro","25]}"      //it puts it on display
+
+botview1: "n"
+response: "{["Speed","50"]}"
+
+botview1: "n"
+reponse: "nothing"        //benbot's queue is empty
+
+botview2: (connects)
+
+botview2: "set user alyssabot"
+
+botview2: "n"
+response: "{["Gyro","25"]}"    //it puts it on display
+
+botview2: "n"
+response: "nothing" //alyssabot's queue is empty
+
+admin: "{"token":"...", "GAMESTATE":["stop"]}done\n

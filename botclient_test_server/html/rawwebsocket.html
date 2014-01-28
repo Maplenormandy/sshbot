@@ -1,0 +1,16 @@
+<html>
+  <head>
+    <script type="text/javascript">
+      window.onload = function() {
+        var ws=new WebSocket("ws://localhost:9000");
+        ws.onmessage=function(e) {
+          console.log(e.data);
+        }
+      }
+    </script>
+    </head>
+    <body>
+      <h1>Websocket test page</h1>
+      <h1>open the console and start testing. socket is ws</h1>
+    </body>
+</html>

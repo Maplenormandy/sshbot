@@ -1,0 +1,3 @@
+input from telnet: {"token":"1221","Location1":["Gyro","25"]}
+whats put on the queue: [u'jason', u'Location1', [u'Gyro', u'25']]
+what given out to botclient: ["jason", "Location1", ["Gyro", "25"]]

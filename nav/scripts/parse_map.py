@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import roslib; roslib.load_manifest('nav')
+import socket 
 import Queue
 import pygame
 import rospy
@@ -237,7 +238,7 @@ class locator():
 
         resp.opponent.position.x = self.opponent[0][0]
         resp.opponent.position.y = self.opponent[0][1]
-        opponentquat = tf.transformations.quaternion_from_euler(0, 0, self.silo[0][2])
+        opponentquat = tf.transformations.quaternion_from_euler(0, 0, self.opponent[0][2])
         resp.opponent.orientation.x = opponentquat[0]
         resp.opponent.orientation.y = opponentquat[1]
         resp.opponent.orientation.z = opponentquat[2]
@@ -253,30 +254,17 @@ def normalize(num):
 
 
 if __name__ == "__main__":
-    #First Test Map:
-    #mapString = "22.00:4.50,5.50,3.14:0.00,1.00,0.00,2.00,R:0.00,2.00,1.00,3.00,N:1.00,3.00,0.00,3.00,N:0.00,3.00,0.00,4.00,N:0.00,4.00,1.00,5.00,N:1.00,5.00,3.00,5.00,N:3.00,5.00,3.00,4.00,N:3.00,4.00,4.00,5.00,N:4.00,5.00,5.00,5.00,N:5.00,5.00,5.00,3.00,N:5.00,3.00,4.00,2.00,N:4.00,2.00,4.00,1.00,N:4.00,1.00,3.00,0.00,N:3.00,0.00,2.00,0.00,N:2.00,0.00,2.00,1.00,N:2.00,1.00,0.00,1.00,N:"
-    #Mock 2:
-    #mapString = "22.0:4.5,5.5,3.14159:0,0,0,1,N:0,1,1,2,O:1,2,1,3,O:1,3,0,4,O:0,4,0,6,S:0,6,3,6,N:3,6,4,6,R:4,6,7,6,N:7,6,7,1,N:7,1,6,0,N:6,0,5,0,R:5,0,3,0,N:3,0,2,1,N:2,1,1,0,N:1,0,0,0,R:4,0,4,5,N:4,5,5,5,N:4,1,3,2,N:3,2,2,2,N:2,2,2,3,N:2,3,4,3,N:5,1,5,3,N:5,3,6,3,N:6,3,6,2,N:6,2,5,1,N:"
-    
-    #IDC Map - Hexagon:
-    mapString = "22.0:1.0,1.0,0:0,0,0,3,N:0,3,1,4,N:1,4,2,4,S:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,0,0,O:" #top of hexagon is virtual silo
-
-    #Next House v1: 
-    #mapString = "22.0:1,1,3.14159:0,0,0,3,N:0,3,0,4,S:0,4,2,4,O:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,0,0,N:"
-    #Next House v2: 
-    #mapString = "22.0:1.0,1.0,0.0:0,0,0,3,N:0,3,0,4,S:0,4,1,4,O:1,4,2,4,R:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,2,0,N:2,0,1,0,R:1,0,0,0,N"
+    s = socket.socket()         # Create a socket object
+    host = socket.gethostname() # Get local machine name
+    #host = "18.150.7.174"      # The actual server for competition
+    port = 6667 
+    s.connect((host, port))
+    mapString = s.recv(1024).strip()
+    print mapString
+    s.close                     # Close the socket when done
 
     rospy.init_node('locator_server')
     loc = locator(mapString)
     rospy.spin()
-
-#    #draw it to the screen
-#    pygame.display.flip()
-#    #input handling (somewhat boilerplate code):
-#    while True:
-#       for event in pygame.event.get():
-#          if event.type == pygame.QUIT:
-#              sys.exit(0)
-
 
 
