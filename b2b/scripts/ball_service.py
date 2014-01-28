@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('b2b')
 import rospy
-from std_msgs.msg import String, Int16, Float32
+from std_msgs.msg import String, Int16, Float32, Bool
 import math
 import numpy as np
 import thread
@@ -17,17 +17,10 @@ class BallHandler():
         self.roller_pub = rospy.Publisher('/roller_cmd', Float32)
         #self.roller_pub.publish(Float32(data=0.5), latch=True)
 
-        self.screw_queue = ['']*90
-        self.screw_ind = 0
-
-        self.kick_pub = rospy.Publisher('/kick_cmd', Int16)
         self.pac_pub = rospy.Publisher('/pac_cmd', Int16)
-        self.pac_pub.publish(Int16(data=70))
         self.gate_g_pub = rospy.Publisher('/gate_g_cmd', Int16)
         self.gate_r_pub = rospy.Publisher('/gate_r_cmd', Int16)
-        self.gate_g_pub.publish(Int16(data=0))
 
-        self.screw_sub = rospy.Subscriber('/profit/screw', String, self.saw_ball)
 
         self.ball_lock = threading.RLock()
         self.ball_srv = rospy.Service('green_ball_server', GreenBallService, self.greenBallSrv)
@@ -93,13 +86,7 @@ class BallHandler():
 
         return resp
 
-    def saw_ball(self, msg):
-        self.screw_queue[self.screw_ind] = msg.data
-        self.screw_ind += 1
-        if self.screw_queue[self.screw_ind-60] == 'g':
-            self.kick_cmd.publish(Int16(data=180))
-        else:
-            self.kick_cmd.publish(Int16(data=0))
+    def tongueCb(self, msg):
 
 
 def main():

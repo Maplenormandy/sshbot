@@ -2,7 +2,6 @@
 import roslib; roslib.load_manifest('profit')
 import rospy
 import numpy as np
-import cv2
 from profit.msg import BallArray, Wall, Ball
 from geometry_msgs.msg import Point, PoseArray, Pose
 from ballseeingeye import BallSeeingEye
