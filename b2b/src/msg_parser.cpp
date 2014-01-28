@@ -14,6 +14,8 @@ tf::TransformBroadcaster* p_odom_broadcaster;
 
 const double pi = boost::math::constants::pi<double>();
 const float irRange = 0.7f;
+const float dist_to_ir_center = 0.0513842f;
+const float dist_to_ir_center_fwd = 0.2f;
 
 nav_msgs::Odometry odom;
 
@@ -94,9 +96,8 @@ struct irReading
 
 struct irFutzer
 {
-    ros::Publisher lscan_pub, rscan_pub, flscan_pub, frscan_pub, scan_pub;
-    sensor_msgs::LaserScan lscan, rscan, flscan, frscan;
-    const float dist_to_ir_center = 0.0513842f;
+    ros::Publisher lscan_pub, rscan_pub, flscan_pub, frscan_pub, fscan_pub, scan_pub;
+    sensor_msgs::LaserScan lscan, rscan, flscan, frscan, fscan;
 
 
     irReading lfwd, lmid, lbak, rfwd, rmid, rbak, fwdl, fwdr;
@@ -117,6 +118,7 @@ struct irFutzer
         rscan_pub = n.advertise<sensor_msgs::LaserScan>("rscan", 150);
         flscan_pub = n.advertise<sensor_msgs::LaserScan>("flscan", 150);
         frscan_pub = n.advertise<sensor_msgs::LaserScan>("frscan", 150);
+        fscan_pub = n.advertise<sensor_msgs::LaserScan>("fscan", 150);
         scan_pub = n.advertise<sensor_msgs::LaserScan>("scan", 150);
 
         frscan.header.frame_id = "frscan";
@@ -135,9 +137,19 @@ struct irFutzer
         flscan.angle_increment = 0.1;
         flscan.time_increment = 0.0;
         flscan.scan_time = .045;
-        flscan.range_min = 0.04;
-        flscan.range_max = 0.26;
+        flscan.range_min = 0.04+dist_to_ir_center_fwd;
+        flscan.range_max = 0.26+dist_to_ir_center_fwd;
         flscan.ranges.resize(1);
+
+        fscan.header.frame_id = "fscan";
+        fscan.angle_min = -0.1;
+        fscan.angle_max = 0.1;
+        fscan.angle_increment = 0.2;
+        fscan.time_increment = 0.0;
+        fscan.scan_time = .045;
+        fscan.range_min = 0.04;
+        fscan.range_max = 0.26;
+        fscan.ranges.resize(2);
 
         lscan.header.frame_id = "lscan";
         lscan.angle_min = -pi/4.0;
@@ -174,6 +186,13 @@ struct irFutzer
         //publish the message
         flscan_pub.publish(flscan);
 
+        //=======Front IR========
+        fscan.header.stamp = msg.header.stamp;
+        fscan.ranges[0] = fwdl.update(msg.fwd_l)+dist_to_ir_center_fwd;
+        fscan.ranges[1] = fwdr.update(msg.fwd_r)+dist_to_ir_center_fwd;
+        //publish the message
+        fscan_pub.publish(fscan); 
+
         //=======Left IR========
         lscan.header.stamp = msg.header.stamp;
         lscan.ranges[0] = lfwd.update(msg.l.fwd + dist_to_ir_center);
@@ -192,6 +211,7 @@ struct irFutzer
 
         scan_pub.publish(frscan);
         scan_pub.publish(flscan);
+        scan_pub.publish(fscan);
         scan_pub.publish(rscan);
         scan_pub.publish(lscan);
     }
