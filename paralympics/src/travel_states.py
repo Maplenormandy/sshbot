@@ -36,17 +36,10 @@ class BallWatcher(SensorState):
         self.seq = 0
 
     def loop(self, msg, ud):
-        self.balls = list(map(lambda b: b.point, msg.balls))
-        self.balls.sort(key=lambda b: -math.hypot(b.x,b.y))
-        self.ball_header = msg.header
-
-        return None
-
         self.seq += 1
 
         if self.failed_balls < 1:
             if len(msg.balls)>0:
-                self.move_state.action_client.cancel_goal()
                 return 'found_balls'
 
         if self.seq % 32 == 0:
@@ -60,12 +53,14 @@ class BallWatcher(SensorState):
 
 
 class ChaseBalls(SensorState):
-    def __init__(self, cmd_vel_pub):
+    def __init__(self, cmd_vel_pub, watcher):
         SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.2)
         self._cmd_vel = cmd_vel_pub
 
         self.irlock = threading.RLock()
         self.irmsg = None
+
+        self.watcher = watcher
 
     def updateIRs(self, msg):
         self.irlock.acquire()
@@ -145,6 +140,12 @@ class ChaseBalls(SensorState):
 
             self._cmd_vel.publish(self.vel)
         else:
+            self.lostframes += 0.5
+            if self.lostframes > 12:
+                self.watcher.failed_balls += 1
+                vel = Twist()
+                self._cmd_vel.publish(vel)
+                return 'succeeded'
             self._cmd_vel.publish(vel)
 
 class Move(State):
@@ -200,10 +201,13 @@ class PretendActionClient():
         self.goal = None
 
     def cancel_goal(self):
+        rospy.loginfo('cancel')
         rospy.loginfo(self.goal)
 
     def send_goal(self, goal, done_cb):
+        rospy.loginfo('start')
         self.goal = goal
+        rospy.loginfo(self.goal)
         self.pub.publish(goal.target_pose)
 
     def wait_for_server(self):
@@ -230,10 +234,10 @@ class TravelState(StateMachine):
 
         self.userdata.msg_ball_out = None
 
-        self.action_client = SimpleActionClient('move_base', MoveBaseAction)
-        #self.action_client = PretendActionClient()
+        #self.action_client = SimpleActionClient('move_base', MoveBaseAction)
+        self.action_client = PretendActionClient()
 
-        self.move_state = Move(self.action_client, 0.2)
+        self.move_state = Move(self.action_client, 0.05)
         self.chaser_state = ChaseBalls(self._cmd_vel)
         self.userdata.msg_in = None
 
@@ -254,7 +258,7 @@ class TravelState(StateMachine):
             StateMachine.add('SM_MOVE', self.sm_move,
                     transitions={'found_balls':'CHASE_BALLS'}
                     )
-            StateMachine.add('CHASE_BALLS', self.move_state,
+            StateMachine.add('CHASE_BALLS', self.chaser_state,
                     transitions={'succeeded':'SM_MOVE'},
                     remapping={'msg_in':'msg_ball_in'}
                     )
@@ -285,7 +289,7 @@ def main():
     target_pose.header.stamp = rospy.Time.now()
     target_pose.header.frame_id = "base_link"
     target_pose.pose.position.x = -0.5
-    target_pose.pose.orientation.z = 1.0
+    target_pose.pose.orientation.w = 1.0
     sm_travel.userdata.target_pose = target_pose
     sm_travel.execute()
 

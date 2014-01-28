@@ -35,7 +35,11 @@ class BallSeeingEye:
             camera=2, debug=False, quickstart = False):
         self.cap = cv2.VideoCapture(camera)
         if not self.cap.isOpened():
+            self.cap = cv2.VideoCapture(camera+1)
+        if not self.cap.isOpened():
             self.cap = cv2.VideoCapture(camera-1)
+        if not self.cap.isOpened():
+            self.cap = cv2.VideoCapture(camera-2)
         print("Setting up camera feed...")
         time.sleep(1)
 

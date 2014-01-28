@@ -12,11 +12,14 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/Empty.h>
 #include <std_msgs/Int16.h>
+#include <std_msgs/UInt16.h>
 
 std_msgs::String str_msg;
+std_msgs::UInt16 sas_v_msg;
 
 ros::NodeHandle nh;
 ros::Publisher chatter("chatter", &str_msg);
+ros::Publisher sas_voltage("/sas_volts", &sas_v_msg);
 
 DifferentialDrive dd;
 IRSuite irs;
@@ -117,7 +120,7 @@ void setup()
     nh.subscribe(gate_r_cmd);
 
     kick.attach(KICK_SERVO);
-    kick.write(0);
+    kick.write(90);
     pac.attach(PAC_SERVO);
     pac.write(70);
     gate_g.attach(GATE_G_SERVO);
@@ -195,6 +198,10 @@ void loop()
     {
         dd.reset();
     }
+
+    sas_v_msg.data = analogRead(SAS_CUR);
+
+    sas_voltage.publish(&sas_v_msg);
 
     ++seq;
     toggleLED();
