@@ -22,7 +22,7 @@ __all__ = ['TravelState']
 
 class BallWatcher(SensorState):
     def __init__(self, move_state):
-        SensorState.__init__(self, '/profit/balls', BallArray, 0.2,
+        SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.2,
                 output_keys=['ball_pose'],
                 outcomes=['found_balls', 'preempted']
                 )
@@ -36,6 +36,10 @@ class BallWatcher(SensorState):
         self.seq = 0
 
     def loop(self, msg, ud):
+        self.balls = list(map(lambda b: b.point, msg.balls))
+        self.balls.sort(key=lambda b: -math.hypot(b.x,b.y))
+        self.ball_header = msg.header
+
         return None
 
         self.seq += 1
@@ -57,7 +61,7 @@ class BallWatcher(SensorState):
 
 class ChaseBalls(SensorState):
     def __init__(self, cmd_vel_pub):
-        SensorState.__init__(self, '/profit/balls', BallArray, 0.2)
+        SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.2)
         self._cmd_vel = cmd_vel_pub
 
         self.irlock = threading.RLock()
@@ -170,7 +174,9 @@ class Move(State):
             self._trigger_cond.wait(self._timeout)
             self._trigger_cond.release()
 
-            if self.goal_status == GoalStatus.SUCCEEDED:
+            if self.ball_status:
+                return 'balls_found'
+            elif self.goal_status == GoalStatus.SUCCEEDED:
                 return 'succeeded'
             elif self.goal_status == GoalStatus.PREEMPTED or self.preempt_requested():
                 self.action_client.cancel_goal()

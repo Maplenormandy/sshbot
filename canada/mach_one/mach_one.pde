@@ -180,7 +180,10 @@ void loop()
     // Precise timekeeping
     time = micros();
 
-    dd.loop();
+    if (seq%2 == 0)
+    {
+        dd.loop();
+    }
     if (seq%3 == 0)
     {
         irs.loop();
