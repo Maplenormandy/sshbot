@@ -366,13 +366,13 @@ class GrabSiloBalls(State):
     def execute(self, ud):
         msg = Float32()
         msg.data = 0.5
-        self._sas_pub.publish(msg)
+        #self._sas_pub.publish(msg)
         rospy.sleep(0.5)
         msg.data = -0.5
-        self._sas_pub.publish(msg)
+        #self._sas_pub.publish(msg)
         rospy.sleep(0.5)
         msg.data = 0.0
-        self._sas_pub.publish(msg)
+        #self._sas_pub.publish(msg)
 
         if self.preempt_requested():
             self.service_preempt()
