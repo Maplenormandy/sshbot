@@ -8,7 +8,7 @@ import rospy
 import math
 import tf
 from nav.srv import *
-from std_msgs.msg import Header
+from std_msgs.msg import Header, String
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 
 class locator():
@@ -282,24 +282,18 @@ def is_number(s):
 
 
 if __name__ == "__main__":
+    rospy.init_node('parse_map')
+    start_pub = rospy.Publisher('start', String, latch=True)
     s = socket.socket()         # Create a socket object
-    host = socket.gethostname() # Get local machine name
-    #host = "18.150.7.174"      # The actual server for competition
+    #host = socket.gethostname() # Get local machine name
+    host = "18.150.7.174"      # The actual server for competition
     port = 6667
     s.connect((host, port))
-    response = s.recv(1024)
-    while not is_number(response[0]):
-        print "Resp= " + response
-        response = s.recv(1024)
-    mapString = response.strip()
-    print "mapstring= " + mapString
-    rospy.init_node('locator_server')
-    loc = locator(mapString)
+    print "connected"
     while True:
-        #if s.recv(1024) == "start\n":
-            print "started!"
-            s.close             # Close the socket when done
-            break
-    rospy.spin()
+        resp = s.recv(1024)
+        print resp
+        if resp == "{\"GAME\": \"start\"}\n":
+            start_pub.publish(String("start"))
 
 
