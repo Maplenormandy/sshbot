@@ -2,92 +2,142 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped
-import math
-import numpy as np
 from sensor_state import SensorState
-from init_state import InitState
-from wallflower import Wallflower
-from profit.msg import BallArray
+from system_states import InitSystems
+from travel_states import TravelState
+from dock_states import SiloState, ReactorState, EnemyWallState
 from smach import *
 from smach_ros import *
-
-class ChaseBalls(SensorState):
-    def __init__(self, cmd_vel_pub):
-        SensorState.__init__(self, '/balls', BallArray, 0.2)
-        self._cmd_vel = cmd_vel_pub
-
-    def execute(self, ud):
-        self.xl = 0.0
-        self.rl = 0.0
-        self.lostframes = 0
-        self.vel = Twist()
-        return SensorState.execute(self, ud)
-
-    def loop(self, msg, ud):
-        if len(msg.balls)==0:
-            self.lostframes += 1
-            if self.lostframes > 24:
-                return 'succeeded'
-            else:
-                self.vel.linear.x *= 0.25
-                self.vel.angular.z *= 0.3
-
-        else:
-            maxScore = 0.0
-            maxBall = None
-            for ball in msg.balls:
-                score = ball.y + abs(ball.x)*0.2 + ball.r
-                if score > maxScore:
-                    maxScore = score
-                    maxBall = ball
-
-            maxBall.x = maxBall.x*0.9 + self.xl*0.1
-            maxBall.r = maxBall.r*0.5 + self.rl*0.5
-
-            self.xl = maxBall.x
-            self.rl = maxBall.r
-
-            self.vel.linear.x = self.vel.linear.x*0.5 + 0.025
-            self.vel.angular.z = self.vel.angular.z*0.5 - maxBall.x*0.25
-
-            self._cmd_vel.publish(self.vel)
+from nav.srv import *
+from geometry_msgs.msg import Twist, PointStamped, Pose, PoseStamped, PoseWithCovarianceStamped
 
 
-class WatchBalls(SensorState):
-    def __init__(self):
-        SensorState.__init__(self, '/balls', BallArray, 0.2,
-                outcomes=['found_ball'])
-
-    def loop(self, msg, ud):
-        if len(msg.balls)>0:
-           return 'found_ball'
-
-
-""" Template for nav state:
-        SimpleActionState.__init__(self,
-                'move_base',
-                MoveBaseAction,
-                goal_slots=['target_pose'])
-"""
-
+@cb_interface(
+        input_keys=['target'],
+        output_keys=['target_pose'],
+        outcomes=['succeeded','preempted','aborted']
+        )
+def getTargetPose(ud):
+    posSrv = rospy.ServiceProxy('locator', Locator)
+    target_pose = PoseStamped()
+    rospy.loginfo(ud.target)
+    if ud.target == "reactor1":
+        target_pose.pose = posSrv().reactor1
+    elif ud.target == "reactor2":
+        target_pose.pose = posSrv().reactor2
+    elif ud.target == "reactor3":
+        target_pose.pose = posSrv().reactor3
+    elif ud.target == "silo":
+        target_pose.pose = posSrv().silo
+    elif ud.target == "enemy":
+        target_pose.pose = posSrv().opponent
+    target_pose.header.stamp = rospy.Time.now()
+    target_pose.header.frame_id = "map"
+    ud.target_pose = target_pose
+    return 'succeeded'
 
 def main():
-    rospy.init_node('supersonic')
+    rospy.init_node("supersonic")
 
     cmd_vel = rospy.Publisher("/cmd_vel", Twist)
     sm_root = StateMachine(outcomes=['succeeded', 'preempted', 'aborted'])
+    sm_root.userdata.silo = "silo"
+    sm_root.userdata.reactor1 = "reactor1"
+    sm_root.userdata.reactor2 = "reactor2"
+    sm_root.userdata.reactor3 = "reactor3"
+    sm_root.userdata.enemy = "enemy"
+    sm_root.userdata.high_balls = 3
+    sm_root.userdata.high_balls_2 = 1
+    sm_root.userdata.reactor_back_dist = -0.1334
+    sm_root.userdata.reactor_back_speed = 0.15
 
     with sm_root:
-
-        sm_init = InitState()
-
-        StateMachine.add('INIT',
-                sm_init,
-                remapping={'total_dist':'sm_dist'}
+        StateMachine.add('SILO_FIND', CBState(getTargetPose),
+                transitions={'succeeded':'SILO_TRAVEL'},
+                remapping={
+                    'target':'silo',
+                    'target_pose':'silo_pose'
+                    }
+                )
+        StateMachine.add('SILO_TRAVEL', TravelState(),
+                transitions={'succeeded':'SILO'},
+                remapping={'target_pose':'silo_pose'}
                 )
 
+        sm_disp = SiloState()
+        StateMachine.add('SILO', sm_disp,
+                transitions={'succeeded':'REACTOR1_FIND'}
+                )
+
+        StateMachine.add('REACTOR1_FIND', CBState(getTargetPose),
+                transitions={'succeeded':'REACTOR1_TRAVEL'},
+                remapping={
+                    'target':'reactor1',
+                    'target_pose':'reactor1_pose'
+                    }
+                )
+        StateMachine.add('REACTOR1_TRAVEL', TravelState(),
+                transitions={'succeeded':'REACTOR1'},
+                remapping={'target_pose':'reactor1_pose'}
+                )
+        sm_reactor1 = ReactorState()
+        StateMachine.add('REACTOR1', sm_reactor1,
+                transitions={'succeeded':'ENEMY_FIND'}
+                )
+        # TODO Change back to REACTOR2_FIND
+
+
+        StateMachine.add('REACTOR2_FIND', CBState(getTargetPose),
+                transitions={'succeeded':'REACTOR2_TRAVEL'},
+                remapping={
+                    'target':'reactor2',
+                    'target_pose':'reactor2_pose'
+                    }
+                )
+        StateMachine.add('REACTOR2_TRAVEL', TravelState(),
+                transitions={'succeeded':'REACTOR2'},
+                remapping={'target_pose':'reactor2_pose'}
+                )
+        sm_reactor2 = ReactorState()
+        StateMachine.add('REACTOR2', sm_reactor2,
+                transitions={'succeeded':'REACTOR3_FIND'}
+                )
+
+        StateMachine.add('REACTOR3_FIND', CBState(getTargetPose),
+                transitions={'succeeded':'REACTOR3_TRAVEL'},
+                remapping={
+                    'target':'reactor3',
+                    'target_pose':'reactor3_pose'
+                    }
+                )
+        StateMachine.add('REACTOR3_TRAVEL', TravelState(),
+                transitions={'succeeded':'REACTOR3'},
+                remapping={'target_pose':'reactor3_pose'}
+                )
+        sm_reactor3 = ReactorState()
+        StateMachine.add('REACTOR3', sm_reactor3,
+                transitions={'succeeded':'ENEMY_FIND'}
+                )
+
+        StateMachine.add('ENEMY_FIND', CBState(getTargetPose),
+                transitions={'succeeded':'ENEMY_TRAVEL'},
+                remapping={
+                    'target':'enemy',
+                    'target_pose':'enemy_pose'
+                    }
+                )
+        StateMachine.add('ENEMY_TRAVEL', TravelState(),
+                transitions={'succeeded':'ENEMY'},
+                remapping={'target_pose':'enemy_pose'}
+                )
+        sm_enemy = EnemyWallState()
+        StateMachine.add('ENEMY', sm_enemy,
+                transitions={'succeeded':'succeeded'}
+                )
+
+
     sm_root.execute()
-    rospy.loginfo(sm_root.userdata.sm_dist)
+
 
 if __name__=='__main__':
     main()

@@ -86,8 +86,6 @@ class BallHandler():
 
         return resp
 
-    def tongueCb(self, msg):
-
 
 def main():
     rospy.init_node('ball_service')
