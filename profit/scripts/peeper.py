@@ -10,18 +10,22 @@ import sys
 import time
 
 class Peeper:
-    BLUR = 30
+    BLUR = 1
     SLEEP = 20
     DESIRED_WIDTH = 352
     DESIRED_HEIGHT = 288
 
-    BALL_LIGHT = 50
-    GREEN_LOW = 20
+    BALL_LIGHT = 20
+    BALL_SAT = 20
+    GREEN_LOW = 50
     GREEN_HI = 110
 
-    EVALPOINT = (10,90)
+    RED_HI = 10
+    RED_LOW = 170
 
-    def __init__(self, colourCall=print, camera=1, debug=False):
+    EVALPOINT = (52,230)
+
+    def __init__(self, colourCall=print, camera=0, debug=False):
         self.cap = cv2.VideoCapture(camera)
         print("Setting up camera feed...")
         time.sleep(1)
@@ -48,17 +52,17 @@ class Peeper:
 
             h,s,v = hsv[self.EVALPOINT[1], self.EVALPOINT[0]]
 
-            if v > self.BALL_LIGHT:
-                if h > self.GREEN_LOW and h < self.GREEN_HI:
-                    self.colourCall("G")
-                else:
+            if v > self.BALL_LIGHT and v>self.BALL_SAT:
+                if h > self.RED_LOW or h < self.RED_HI:
                     self.colourCall("R")
+                else:
+                    self.colourCall("G")
             else:
                 self.colourCall("N")
 
             if self.debug:
                 print(h,s,v)
-                cv2.imshow('FullImage', blur)
+            cv2.imshow('FullImage', blur)
 
     def execute(self):
         while True:
@@ -73,7 +77,7 @@ class Peeper:
 
 if __name__ == '__main__':
     args = sys.argv
-    needColourNow = peeper(
+    needColourNow = Peeper(
         debug=("-d" in args))
     needColourNow.execute()
 

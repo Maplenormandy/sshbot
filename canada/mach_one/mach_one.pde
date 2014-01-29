@@ -109,6 +109,7 @@ void setup()
     nh.subscribe(dd.pid_tune);
     nh.advertise(dd.odom);
     nh.advertise(dd.overspeed);
+    nh.advertise(sas_voltage);
 
     nh.subscribe(odom_reset);
     nh.subscribe(sas_cmd);
@@ -120,7 +121,7 @@ void setup()
     nh.subscribe(gate_r_cmd);
 
     kick.attach(KICK_SERVO);
-    kick.write(90);
+    kick.write(180);
     pac.attach(PAC_SERVO);
     pac.write(70);
     gate_g.attach(GATE_G_SERVO);
@@ -183,10 +184,7 @@ void loop()
     // Precise timekeeping
     time = micros();
 
-    if (seq%2 == 0)
-    {
-        dd.loop();
-    }
+    dd.loop();
     if (seq%3 == 0)
     {
         irs.loop();

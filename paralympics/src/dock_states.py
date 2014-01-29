@@ -2,8 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, PointStamped, Pose, PoseStamped, PoseWithCovarianceStamped
-from std_msgs.msg import Int16, Empty, Float32
-from actionlib_tutorials.msg import FibonacciAction
+from std_msgs.msg import Int16, Empty, Float32, String
 import math
 import numpy as np
 from sensor_state import SensorState
@@ -15,7 +14,18 @@ from travel_states import *
 from nav.srv import *
 from square import DriveStraight
 
-__all__ = ['SiloState']
+__all__ = ['SiloState', 'ReactorState', 'EnemyWallState']
+
+attemptAlign = True
+
+
+@cb_interface(
+        outcomes=['succeeded','preempted','aborted']
+        )
+def rollerCmd(ud, pub, power):
+    pub.publish(Float32(power))
+    return 'succeeded'
+
 
 class AlignToReactor(SensorState):
     def __init__(self, cmd_vel_pub):
@@ -76,6 +86,9 @@ class AlignToReactor(SensorState):
 
 
     def execute(self, ud):
+        global attemptAlign
+        if not attemptAlign:
+            return 'succeeded'
         self.driveCentering = True
         self.driving = False
         self.overspeed = False
@@ -168,12 +181,19 @@ class ReactorState(StateMachine):
                 )
 
         self._cmd_vel = rospy.Publisher('/cmd_vel', Twist)
+        self._roller_pub = rospy.Publisher('/roller_cmd', Float32)
 
         self.sm_high = AlignAndQueue(self._cmd_vel)
         self.sm_low = AlignAndQueue(self._cmd_vel)
         self.userdata.msg_in = None
 
         with self:
+            StateMachine.add('ROLLER_OFF',
+                    CBState(rollerCmd,
+                        cb_args=[self._roller_pub,0.0]
+                        ),
+                    transitions={'succeeded':'SM_HIGH'}
+                    )
             StateMachine.add('SM_HIGH', self.sm_high,
                     remapping={
                         'balls':'high_balls',
@@ -192,21 +212,18 @@ class ReactorState(StateMachine):
                     )
             StateMachine.add('DRIVE_BACK',
                     DriveStraight(self._cmd_vel),
-                    transitions={'succeeded':'succeeded'},
+                    transitions={'succeeded':'ROLLER_ON'},
                     remapping={
                         'goal_dist':'reactor_back_dist',
                         'goal_speed':'reactor_back_speed'
                         },
                     )
-
-            #StateMachine.add('SM_LOW', self.sm_low,
-            #        remapping={
-            #            'balls':'low_balls',
-            #            'dist':'low_dist',
-            #            },
-            #        transitions={'succeeded':'DUMP_LOW'}
-            #        )
-            #StateMachine.add('DUMP_LOW', DumpGreenBalls())
+            StateMachine.add('ROLLER_ON',
+                    CBState(rollerCmd,
+                        cb_args=[self._roller_pub,0.5]
+                        ),
+                    transitions={'succeeded':'succeeded'}
+                    )
 
 class AlignAndQueue(Concurrence):
     def __init__(self, cmd_vel_pub):
@@ -246,6 +263,32 @@ class AlignAndQueue(Concurrence):
             return 'aborted'
 
 
+class AlignToSiloBall(SensorState):
+    def __init__(self, cmd_vel_pub):
+        SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.1,
+                outcomes=['succeeded', 'preempted', 'aborted'])
+
+        self._cmd_vel = cmd_vel_pub
+
+    def loop(self, msg, ud):
+        vel = Twist()
+
+        ball = min(msg.balls, key=lambda b: abs(b.point.x-2.0*b.point.z))
+
+        if abs(.165-ball.point.z)<0.04:
+            self._cmd_vel.publish(vel)
+            return 'succeeded'
+
+        vel.linear.x = np.clip((.165-ball.point.z)*3.0,-0.06,0.06)
+        vel.angular.x = np.clip(-(ball.point.x)*4.0, -0.6,0.6)
+
+
+        """
+        SILO
+        """
+
+        self._cmd_vel.publish(vel)
+
 
 class AlignToSilo(SensorState):
     def __init__(self, cmd_vel_pub):
@@ -258,18 +301,20 @@ class AlignToSilo(SensorState):
         """
         SILO
         """
+
         avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
         diffY = (msg.a.y - msg.d.y) - (msg.b.y - msg.c.y)
         height = (msg.d.y - msg.a.y) + (msg.c.y - msg.b.y)
 
-        """
         rospy.loginfo('---')
         rospy.loginfo(avgX)
         rospy.loginfo(diffY)
         rospy.loginfo(height)
-        """
 
         vel = Twist()
+
+        self.heights = np.roll(self.heights, 1)
+        self.heights[0] = height
 
         if self.centering:
             rospy.loginfo('centering')
@@ -293,10 +338,15 @@ class AlignToSilo(SensorState):
                     self.driveCentering = False
                 else:
                     vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
+            elif abs(.10-height)<0.05:
+                vel = Twist()
+                self._cmd_vel.publish(vel)
+                return 'succeeded'
             else:
-                vel.angular.z = np.clip(-avgX*4.0, -0.6, 0.6)
+                vel.angular.z = np.clip(-avgX*3.0, -0.4, 0.4)
                 rospy.loginfo('driving')
-                vel.linear.x = np.clip(.7-height,-0.15,0.15)
+                vel.linear.x = np.clip((height-0.10)*0.6,-0.10,0.10)
+
 
         """
         SILO
@@ -305,7 +355,10 @@ class AlignToSilo(SensorState):
         self._cmd_vel.publish(vel)
 
     def execute(self, ud):
-        return 'succeeded'
+        self.heights = np.array([.10]*5)
+        global attemptAlign
+        if not attemptAlign:
+            return 'succeeded'
 
         """
         SILO
@@ -353,6 +406,8 @@ class AlignToSilo(SensorState):
                 vel = Twist()
                 vel.linear.x = -0.05
                 self._cmd_vel.publish(vel)
+            else:
+                return 'succeeded'
 
         """
         SILO
@@ -365,14 +420,14 @@ class GrabSiloBalls(State):
 
     def execute(self, ud):
         msg = Float32()
-        msg.data = 0.5
-        #self._sas_pub.publish(msg)
-        rospy.sleep(0.5)
-        msg.data = -0.5
-        #self._sas_pub.publish(msg)
-        rospy.sleep(0.5)
+        msg.data = -0.4
+        self._sas_pub.publish(msg)
+        rospy.sleep(1.2)
+        msg.data = 0.4
+        self._sas_pub.publish(msg)
+        rospy.sleep(0.9)
         msg.data = 0.0
-        #self._sas_pub.publish(msg)
+        self._sas_pub.publish(msg)
 
         if self.preempt_requested():
             self.service_preempt()
@@ -402,8 +457,8 @@ class CheckSiloBalls(State):
     def execute(self, ud):
         global ballsColl
         ballsColl += 1
-        rospy.sleep(2.0)
-        if ballsColl < 1:
+        rospy.sleep(1.0)
+        if ballsColl < 2:
             return 'valid'
         else:
             return 'invalid'
@@ -416,8 +471,12 @@ class SiloState(StateMachine):
         sas_pub = rospy.Publisher('/sas_cmd', Float32)
         cmd_vel = rospy.Publisher('/cmd_vel', Twist)
 
+        self.userdata.msg_in = None
+
         with self:
             StateMachine.add('ALIGN_SILO', AlignToSilo(cmd_vel),
+                    transitions={'succeeded':'ALIGN_SILO_BALL'})
+            StateMachine.add('ALIGN_SILO_BALL', AlignToSiloBall(cmd_vel),
                     transitions={'succeeded':'CHECK_SILO'})
             StateMachine.add('CHECK_SILO', CheckSiloBalls(),
                     transitions={'valid':'GRAB_SILO',
@@ -427,133 +486,143 @@ class SiloState(StateMachine):
                         'aborted':'ALIGN_SILO'}
                     )
 
-@cb_interface(
-        input_keys=['target'],
-        output_keys=['target_pose'],
-        outcomes=['succeeded','preempted','aborted']
-        )
-def getTargetPose(ud):
-    posSrv = rospy.ServiceProxy('locator', Locator)
-    target_pose = PoseStamped()
-    rospy.loginfo(ud.target)
-    if ud.target == "reactor1":
-        target_pose.pose = posSrv().reactor1
-    elif ud.target == "reactor2":
-        target_pose.pose = posSrv().reactor2
-    elif ud.target == "reactor3":
-        target_pose.pose = posSrv().reactor3
-    elif ud.target == "silo":
-        target_pose.pose = posSrv().silo
-    target_pose.header.stamp = rospy.Time.now()
-    target_pose.header.frame_id = "map"
-    ud.target_pose = target_pose
-    return 'succeeded'
 
-@cb_interface(
-        input_keys=['target_pose'],
-        outcomes=['succeeded','preempted','aborted']
-        )
-def resetLocalization(ud, pub):
-    pose = PoseWithCovarianceStamped()
-    target_pose = ud.target_pose
-    pose.pose.pose = target_pose.pose
-    pose.header = target_pose.header
-    pose.header.stamp = rospy.Time.now()
-    pub.publish(pose)
-    return 'succeeded';
+# TODO Make it do something earlier
+def waitForEnd(msg, ud):
+    rospy.sleep(3.0)
+    return 'invalid'
+
+class AlignToEnemyWall(SensorState):
+    def __init__(self, cmd_vel_pub):
+        SensorState.__init__(self, '/profit/enemy_wall_raw', Wall, 0.1,
+                outcomes=['succeeded', 'preempted', 'aborted']
+                )
+
+        self._cmd_vel = cmd_vel_pub
+        rospy.Subscriber('/overspeed', Empty, self.overspeeded)
+        self.overspeed = False
+
+    def loop(self, msg, ud):
+        avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
+        diffY = (msg.a.y - msg.d.y) - (msg.b.y - msg.c.y)
+        height = (msg.d.y - msg.a.y) + (msg.c.y - msg.b.y)
+
+        """
+        rospy.loginfo('---')
+        rospy.loginfo(avgX)
+        rospy.loginfo(diffY)
+        rospy.loginfo(height)
+        """
+
+        vel = Twist()
+
+        vel.angular.z = np.clip(-diffY*6.0, -0.6, 0.6)
+        rospy.loginfo('driving')
+        vel.linear.x = 0.15
+
+        self._cmd_vel.publish(vel)
+
+
+    def overspeeded(self, msg):
+        self.overspeed = True
+
+
+    def execute(self, ud):
+        global attemptAlign
+        if not attemptAlign:
+            return 'succeeded'
+
+        sub = rospy.Subscriber(self._topic, self._msg_type, self._msg_cb)
+
+        msg = ud.msg_in
+
+        while True:
+            if self.preempt_requested():
+                self.service_preempt()
+                sub.unregister()
+                ud.msg_out = msg
+                return 'preempted'
+            self.overspeed = False
+
+            if msg == None:
+                self._trigger_cond.acquire()
+                self._trigger_cond.wait(self._timeout)
+                self._trigger_cond.release()
+
+                msg = self._msg
+
+            if self.overspeed:
+                for i in range(0):
+                    vel = Twist()
+                    rospy.loginfo('running')
+                    rospy.sleep(0.5)
+                    i += 1
+
+                vel = Twist()
+                vel.linear.x = 0.0
+                self._cmd_vel.publish(vel)
+                return 'succeeded'
+
+            if msg != None:
+                self.foundWall = True
+                ret = self.loop(msg, ud)
+                if ret:
+                    sub.unregister()
+                    ud.msg_out = msg
+                    return ret
+
+                self._msg = None
+                msg = None
+
+class DumpRedBalls(State):
+    def __init__(self):
+        State.__init__(self,
+                output_keys=['dumped'],
+                outcomes=['succeeded', 'preempted', 'aborted']
+                )
+
+        self.ball_dump = rospy.ServiceProxy('ball_dump', BallDump)
+
+    def execute(self, ud):
+        ud.dumped = self.ball_dump('r').dumped
+        return 'succeeded'
+
+class EnemyWallState(StateMachine):
+    def __init__(self):
+        StateMachine.__init__(self,
+                outcomes=['succeeded', 'preempted', 'aborted'])
+
+        self._cmd_vel = rospy.Publisher('/cmd_vel', Twist)
+        self._roller_pub = rospy.Publisher('/roller_cmd', Float32)
+        self.userdata.msg_in = None
+
+        with self:
+            StateMachine.add('ROLLER_OFF',
+                    CBState(rollerCmd,
+                        cb_args=[self._roller_pub,0.0]
+                        ),
+                    transitions={'succeeded':'ALIGN_ENEMY'}
+                    )
+            StateMachine.add('ALIGN_ENEMY',
+                    AlignToEnemyWall(self._cmd_vel),
+                    transitions={'succeeded':'DUMP_REDS'})
+            StateMachine.add('WAIT_FOR_END',
+                    SensorState('/game_status', String, 0.1,
+                        outcomes=['invalid','preempted']
+                        ),
+                    transitions={'invalid':'DUMP_REDS'}
+                )
+            StateMachine.add('DUMP_REDS', DumpRedBalls(),
+                    transitions={'succeeded':'succeeded'}
+                    )
+
+
 
 def main():
     rospy.init_node('docktest')
 
-    sm_root = StateMachine(outcomes=['succeeded', 'preempted', 'aborted'])
-    sm_root.userdata.silo = "silo"
-    sm_root.userdata.reactor1 = "reactor1"
-    sm_root.userdata.reactor2 = "reactor2"
-    sm_root.userdata.reactor3 = "reactor3"
-    sm_root.userdata.high_balls = 3
-    sm_root.userdata.high_balls_2 = 1
-    sm_root.userdata.reactor_back_dist = -0.1334
-    sm_root.userdata.reactor_back_speed = 0.15
-
-    initpospub = rospy.Publisher('/initialpose',
-            PoseWithCovarianceStamped)
-
-
-    with sm_root:
-        StateMachine.add('SILO_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'SILO_TRAVEL'},
-                remapping={
-                    'target':'silo',
-                    'target_pose':'silo_pose'
-                    }
-                )
-        StateMachine.add('SILO_TRAVEL', TravelState(),
-                transitions={'succeeded':'SILO'},
-                remapping={'target_pose':'silo_pose'}
-                )
-
-        sm_disp = SiloState()
-        StateMachine.add('SILO', sm_disp,
-                transitions={'succeeded':'REACTOR1_FIND'}
-                )
-
-        StateMachine.add('REACTOR1_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'REACTOR1_TRAVEL'},
-                remapping={
-                    'target':'reactor1',
-                    'target_pose':'reactor1_pose'
-                    }
-                )
-        StateMachine.add('REACTOR1_TRAVEL', TravelState(),
-                transitions={'succeeded':'REACTOR1'},
-                remapping={'target_pose':'reactor1_pose'}
-                )
-        sm_reactor1 = ReactorState()
-        StateMachine.add('REACTOR1', sm_reactor1,
-                transitions={'succeeded':'REACTOR2_FIND'}
-                )
-
-
-        StateMachine.add('REACTOR2_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'REACTOR2_TRAVEL'},
-                remapping={
-                    'target':'reactor2',
-                    'target_pose':'reactor2_pose'
-                    }
-                )
-        StateMachine.add('REACTOR2_TRAVEL', TravelState(),
-                transitions={'succeeded':'REACTOR2'},
-                remapping={'target_pose':'reactor2_pose'}
-                )
-        sm_reactor2 = ReactorState()
-        StateMachine.add('REACTOR2', sm_reactor2,
-                transitions={'succeeded':'REACTOR3_FIND'}
-                )
-
-        StateMachine.add('REACTOR3_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'REACTOR3_TRAVEL'},
-                remapping={
-                    'target':'reactor3',
-                    'target_pose':'reactor3_pose'
-                    }
-                )
-        StateMachine.add('REACTOR3_TRAVEL', TravelState(),
-                transitions={'succeeded':'REACTOR3'},
-                remapping={'target_pose':'reactor3_pose'}
-                )
-        sm_reactor3 = ReactorState()
-        StateMachine.add('REACTOR3', sm_reactor3,
-                transitions={'succeeded':'succeeded'}
-                )
-
-    sm_root.execute()
-
-    #sm_disp = SiloState()
-    #sm_disp.execute()
-    #sm_reactor = ReactorState()
-    #sm_reactor.userdata.high_balls = 3
-    #sm_reactor.userdata.low_balls = 1
-    #sm_reactor.execute()
+    sm_dock = SiloState()
+    sm_dock.execute()
 
 
 if __name__=='__main__':

@@ -41,7 +41,7 @@ class BallHandler():
             self.green_queued = 0
             self.ball_lock.release()
 
-            msg.data = 15
+            msg.data = 90
             self.gate_g_pub.publish(msg)
         elif req.color=='r':
             msg.data = 180
@@ -85,8 +85,6 @@ class BallHandler():
         resp.queued = self.green_queued
 
         return resp
-
-    def tongueCb(self, msg):
 
 
 def main():

@@ -2,92 +2,201 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped
-import math
-import numpy as np
+from std_msgs.msg import String
 from sensor_state import SensorState
-from init_state import InitState
-from wallflower import Wallflower
-from profit.msg import BallArray
+from system_states import InitSystems
+from travel_states import TravelState
+from dock_states import SiloState, ReactorState, EnemyWallState
 from smach import *
 from smach_ros import *
+from nav.srv import *
+from geometry_msgs.msg import Twist, PointStamped, Pose, PoseStamped, PoseWithCovarianceStamped
 
-class ChaseBalls(SensorState):
-    def __init__(self, cmd_vel_pub):
-        SensorState.__init__(self, '/balls', BallArray, 0.2)
-        self._cmd_vel = cmd_vel_pub
+
+@cb_interface(
+        input_keys=['target'],
+        output_keys=['target_pose'],
+        outcomes=['succeeded','preempted','aborted']
+        )
+def getTargetPose(ud):
+    posSrv = rospy.ServiceProxy('locator', Locator)
+    target_pose = PoseStamped()
+    rospy.loginfo(ud.target)
+    if ud.target == "reactor1":
+        target_pose.pose = posSrv().reactor1
+    elif ud.target == "reactor2":
+        target_pose.pose = posSrv().reactor2
+    elif ud.target == "reactor3":
+        target_pose.pose = posSrv().reactor3
+    elif ud.target == "silo":
+        target_pose.pose = posSrv().silo
+    elif ud.target == "enemy":
+        target_pose.pose = posSrv().opponent
+    target_pose.header.stamp = rospy.Time.now()
+    target_pose.header.frame_id = "map"
+    ud.target_pose = target_pose
+    return 'succeeded'
+
+class TheDecider(State):
+    def __init__(self):
+        State.__init__(self,
+                outcomes=[
+                    'silo','reactor1','reactor2','reactor3','enemy',
+                    'succeeded','preempted','aborted'
+                    ]
+                )
+        # TODO Put back reactors 2 and 3
+        self.silo_tries = 0
+        self.reactor_tries = [0, -1, -1]
+        self.enemy_tries = 0
 
     def execute(self, ud):
-        self.xl = 0.0
-        self.rl = 0.0
-        self.lostframes = 0
-        self.vel = Twist()
-        return SensorState.execute(self, ud)
+        silo_valid = self.silo_tries >= 0 and self.silo_tries < 2
+        reactor_valid = map(lambda x: x>=0 and x<2, self.reactor_tries)
 
-    def loop(self, msg, ud):
-        if len(msg.balls)==0:
-            self.lostframes += 1
-            if self.lostframes > 24:
-                return 'succeeded'
-            else:
-                self.vel.linear.x *= 0.25
-                self.vel.angular.z *= 0.3
+        rospy.loginfo('---')
+        rospy.loginfo(self.silo_tries)
+        rospy.loginfo(self.reactor_tries)
+        rospy.loginfo(self.enemy_tries)
 
+        if (silo_valid and
+                self.silo_tries <= sum(map(abs,self.reactor_tries))):
+            return 'silo'
         else:
-            maxScore = 0.0
-            maxBall = None
-            for ball in msg.balls:
-                score = ball.y + abs(ball.x)*0.2 + ball.r
-                if score > maxScore:
-                    maxScore = score
-                    maxBall = ball
+            minTries = min(map(abs,self.reactor_tries))
+            for i in range(3):
+                if (reactor_valid[i] and
+                        self.reactor_tries[i]<=minTries):
+                    return "reactor" + str(i+1)
 
-            maxBall.x = maxBall.x*0.9 + self.xl*0.1
-            maxBall.r = maxBall.r*0.5 + self.rl*0.5
+            if self.enemy_tries >= 0 and self.enemy_tries < 2:
+                return 'enemy'
+            else:
+                return 'succeeded'
 
-            self.xl = maxBall.x
-            self.rl = maxBall.r
+    def targetAborted(self, ud):
+        if ud.target == "reactor1":
+            self.reactor_tries[0] += 1
+        elif ud.target == "reactor2":
+            self.reactor_tries[1] += 1
+        elif ud.target == "reactor3":
+            self.reactor_tries[2] += 1
+        elif ud.target == "silo":
+            self.silo_tries += 1
+        elif ud.target == "enemy":
+            self.enemy_tries += 1
+        return 'continue'
 
-            self.vel.linear.x = self.vel.linear.x*0.5 + 0.025
-            self.vel.angular.z = self.vel.angular.z*0.5 - maxBall.x*0.25
+    def targetSucceeded(self, ud):
+        if ud.target == "reactor1":
+            self.reactor_tries[0] = -1
+        elif ud.target == "reactor2":
+            self.reactor_tries[1] = -1
+        elif ud.target == "reactor3":
+            self.reactor_tries[2] = -1
+        elif ud.target == "silo":
+            self.silo_tries = -1
+        elif ud.target == "enemy":
+            self.enemy_tries = -1
+        return 'continue'
 
-            self._cmd_vel.publish(self.vel)
+class ActionPackage(Sequence):
+    def __init__(self, name, meat, input_keys=[]):
+        Sequence.__init__(self,
+                outcomes=['succeeded','aborted','preempted'],
+                connector_outcome='succeeded'
+                )
+
+        self.name = name
+        self.uname = name.upper()
+        self.userdata.target = name
+
+        with self:
+            Sequence.add(name.upper() + '_FIND', CBState(getTargetPose))
+            Sequence.add(name.upper() + '_TRAVEL', TravelState())
+
+            sm_disp = SiloState()
+            Sequence.add(name.upper(), meat)
+
+    def hookRoot(self, sm_root, thinker):
+        with sm_root:
+            StateMachine.add('SM_' + self.uname, self,
+                    transitions={
+                        'succeeded':self.uname + '_SUCCEEDED',
+                        'preempted':self.uname + '_ABORTED',
+                        'aborted':self.uname + '_ABORTED'
+                        }
+                    )
+            StateMachine.add(self.uname + '_ABORTED',
+                    CBState(thinker.targetAborted,
+                        input_keys=['target'],
+                        outcomes=['continue']),
+                    transitions={'continue':'THINKER'},
+                    remapping={'target':self.name}
+                    )
+            StateMachine.add(self.uname + '_SUCCEEDED',
+                    CBState(thinker.targetSucceeded,
+                        input_keys=['target'],
+                        outcomes=['continue']),
+                    transitions={'continue':'THINKER'},
+                    remapping={'target':self.name}
+                    )
 
 
-class WatchBalls(SensorState):
-    def __init__(self):
-        SensorState.__init__(self, '/balls', BallArray, 0.2,
-                outcomes=['found_ball'])
-
-    def loop(self, msg, ud):
-        if len(msg.balls)>0:
-           return 'found_ball'
-
-
-""" Template for nav state:
-        SimpleActionState.__init__(self,
-                'move_base',
-                MoveBaseAction,
-                goal_slots=['target_pose'])
-"""
 
 
 def main():
-    rospy.init_node('supersonic')
+    rospy.init_node("supersonic")
 
     cmd_vel = rospy.Publisher("/cmd_vel", Twist)
     sm_root = StateMachine(outcomes=['succeeded', 'preempted', 'aborted'])
+    sm_root.userdata.silo = "silo"
+    sm_root.userdata.reactor1 = "reactor1"
+    sm_root.userdata.reactor2 = "reactor2"
+    sm_root.userdata.reactor3 = "reactor3"
+    sm_root.userdata.enemy = "enemy"
+
+    thinker = TheDecider()
+
+
+    sm_silo = ActionPackage('silo', SiloState())
+    sm_reactor1 = ActionPackage('reactor1', ReactorState())
+    sm_reactor2 = ActionPackage('reactor2', ReactorState())
+    sm_reactor3 = ActionPackage('reactor3', ReactorState())
+    sm_enemy = ActionPackage('enemy', EnemyWallState())
+
+    sm_reactor1.userdata.high_balls = 3
+    sm_reactor1.userdata.high_balls_2 = 1
+    sm_reactor1.userdata.reactor_back_dist = -0.1334
+    sm_reactor1.userdata.reactor_back_speed = 0.15
+    sm_reactor2.userdata.high_balls = 3
+    sm_reactor2.userdata.high_balls_2 = 1
+    sm_reactor2.userdata.reactor_back_dist = -0.1334
+    sm_reactor2.userdata.reactor_back_speed = 0.15
+    sm_reactor3.userdata.high_balls = 3
+    sm_reactor3.userdata.high_balls_2 = 1
+    sm_reactor3.userdata.reactor_back_dist = -0.1334
+    sm_reactor3.userdata.reactor_back_speed = 0.15
 
     with sm_root:
-
-        sm_init = InitState()
-
-        StateMachine.add('INIT',
-                sm_init,
-                remapping={'total_dist':'sm_dist'}
+        StateMachine.add('THINKER', thinker,
+                transitions={
+                    'silo':'SM_SILO',
+                    'reactor1':'SM_REACTOR1',
+                    'reactor2':'SM_REACTOR2',
+                    'reactor3':'SM_REACTOR3',
+                    'enemy':'SM_ENEMY'
+                    }
                 )
 
+    sm_silo.hookRoot(sm_root, thinker)
+    sm_reactor1.hookRoot(sm_root, thinker)
+    sm_reactor2.hookRoot(sm_root, thinker)
+    sm_reactor3.hookRoot(sm_root, thinker)
+    sm_enemy.hookRoot(sm_root, thinker)
+
     sm_root.execute()
-    rospy.loginfo(sm_root.userdata.sm_dist)
+
 
 if __name__=='__main__':
     main()

@@ -42,7 +42,7 @@ class BallWatcher(SensorState):
             if len(msg.balls)>0:
                 return 'found_balls'
 
-        if self.seq % 32 == 0:
+        if self.seq % 80 == 0:
             self.failed_balls -= 1
             if self.failed_balls < 0:
                 self.failed_balls = 0
@@ -74,6 +74,7 @@ class ChaseBalls(SensorState):
         self.lfdl = 0.0
         self.lostframes = 0
         self.vel = Twist()
+        self.chaseframes = 0
 
         return SensorState.execute(self, ud)
 
@@ -85,6 +86,11 @@ class ChaseBalls(SensorState):
         self.irlock.release()
 
         vel = Twist()
+        self.chaseframes += 1
+
+        if self.chaseframes > 80:
+            self.watcher.failed_balls += 1
+            return 'succeeded'
 
         if irmsg != None:
             if irmsg.fwd_l < 0.08:
@@ -123,6 +129,7 @@ class ChaseBalls(SensorState):
                 if self.lostframes > 12:
                     vel = Twist()
                     self._cmd_vel.publish(vel)
+                    self.watcher.failed_balls += 1
                     return 'succeeded'
                 else:
                     self.vel.linear.x *= 0.75
@@ -234,14 +241,14 @@ class TravelState(StateMachine):
 
         self.userdata.msg_ball_out = None
 
-        #self.action_client = SimpleActionClient('move_base', MoveBaseAction)
-        self.action_client = PretendActionClient()
+        self.action_client = SimpleActionClient('move_base', MoveBaseAction)
+        #self.action_client = PretendActionClient()
 
         self.move_state = Move(self.action_client, 0.05)
-        self.chaser_state = ChaseBalls(self._cmd_vel)
         self.userdata.msg_in = None
 
         self.watcher = BallWatcher(self.move_state)
+        self.chaser_state = ChaseBalls(self._cmd_vel, self.watcher)
         self._ir_pub = rospy.Subscriber('/ir_raw', IRStamped,
                 self.chaser_state.updateIRs)
 
@@ -287,7 +294,7 @@ def main():
     sm_travel = TravelState()
     target_pose = PoseStamped()
     target_pose.header.stamp = rospy.Time.now()
-    target_pose.header.frame_id = "base_link"
+    target_pose.header.frame_id = "map"
     target_pose.pose.position.x = -0.5
     target_pose.pose.orientation.w = 1.0
     sm_travel.userdata.target_pose = target_pose
