@@ -46,9 +46,10 @@ class BallWatcher(SensorState):
                 return 'found_balls'
 
         if self.seq % 80 == 0:
-            self.failed_balls -= 1
-            if self.failed_balls < 0:
-                self.failed_balls = 0
+            pass
+            #self.failed_balls -= 1
+            #if self.failed_balls < 0:
+                #self.failed_balls = 0
 
     def execute(self, ud):
         self.seq = 0

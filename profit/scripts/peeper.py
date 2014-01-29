@@ -16,7 +16,7 @@ class Peeper:
     DESIRED_HEIGHT = 288
 
     BALL_LIGHT = 20
-    BALL_SAT = 20
+    BALL_SAT = 95
     GREEN_LOW = 50
     GREEN_HI = 110
 
