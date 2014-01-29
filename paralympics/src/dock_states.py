@@ -2,7 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, PointStamped, Pose, PoseStamped, PoseWithCovarianceStamped
-from std_msgs.msg import Int16, Empty, Float32
+from std_msgs.msg import Int16, Empty, Float32, String
 import math
 import numpy as np
 from sensor_state import SensorState
@@ -16,7 +16,16 @@ from square import DriveStraight
 
 __all__ = ['SiloState', 'ReactorState', 'EnemyWallState']
 
-attemptAlign = True
+attemptAlign = False
+
+
+@cb_interface(
+        outcomes=['succeeded','preempted','aborted']
+        )
+def rollerCmd(ud, pub, power):
+    pub.publish(Float32(power))
+    return 'succeeded'
+
 
 class AlignToReactor(SensorState):
     def __init__(self, cmd_vel_pub):
@@ -172,12 +181,19 @@ class ReactorState(StateMachine):
                 )
 
         self._cmd_vel = rospy.Publisher('/cmd_vel', Twist)
+        self._roller_pub = rospy.Publisher('/roller_cmd', Float32)
 
         self.sm_high = AlignAndQueue(self._cmd_vel)
         self.sm_low = AlignAndQueue(self._cmd_vel)
         self.userdata.msg_in = None
 
         with self:
+            StateMachine.add('ROLLER_OFF',
+                    CBState(rollerCmd,
+                        cb_args=[self._roller_pub,0.0]
+                        ),
+                    transitions={'succeeded':'SM_HIGH'}
+                    )
             StateMachine.add('SM_HIGH', self.sm_high,
                     remapping={
                         'balls':'high_balls',
@@ -196,21 +212,18 @@ class ReactorState(StateMachine):
                     )
             StateMachine.add('DRIVE_BACK',
                     DriveStraight(self._cmd_vel),
-                    transitions={'succeeded':'succeeded'},
+                    transitions={'succeeded':'ROLLER_ON'},
                     remapping={
                         'goal_dist':'reactor_back_dist',
                         'goal_speed':'reactor_back_speed'
                         },
                     )
-
-            #StateMachine.add('SM_LOW', self.sm_low,
-            #        remapping={
-            #            'balls':'low_balls',
-            #            'dist':'low_dist',
-            #            },
-            #        transitions={'succeeded':'DUMP_LOW'}
-            #        )
-            #StateMachine.add('DUMP_LOW', DumpGreenBalls())
+            StateMachine.add('ROLLER_ON',
+                    CBState(rollerCmd,
+                        cb_args=[self._roller_pub,0.5]
+                        ),
+                    transitions={'succeeded':'succeeded'}
+                    )
 
 class AlignAndQueue(Concurrence):
     def __init__(self, cmd_vel_pub):
@@ -443,7 +456,10 @@ class SiloState(StateMachine):
                     )
 
 
-
+# TODO Make it do something earlier
+def waitForEnd(msg, ud):
+    rospy.sleep(3.0)
+    return 'invalid'
 
 class AlignToEnemyWall(SensorState):
     def __init__(self, cmd_vel_pub):
@@ -554,11 +570,25 @@ class EnemyWallState(StateMachine):
                 outcomes=['succeeded', 'preempted', 'aborted'])
 
         self._cmd_vel = rospy.Publisher('/cmd_vel', Twist)
+        self._roller_pub = rospy.Publisher('/roller_cmd', Float32)
         self.userdata.msg_in = None
 
         with self:
-            StateMachine.add('ALIGN_ENEMY', AlignToEnemyWall(self._cmd_vel),
+            StateMachine.add('ROLLER_OFF',
+                    CBState(rollerCmd,
+                        cb_args=[self._roller_pub,0.0]
+                        ),
+                    transitions={'succeeded':'ALIGN_ENEMY'}
+                    )
+            StateMachine.add('ALIGN_ENEMY',
+                    AlignToEnemyWall(self._cmd_vel),
                     transitions={'succeeded':'DUMP_REDS'})
+            StateMachine.add('WAIT_FOR_END',
+                    SensorState('/game_status', String, 0.1,
+                        outcomes=['invalid','preempted']
+                        ),
+                    transitions={'invalid':'DUMP_REDS'}
+                )
             StateMachine.add('DUMP_REDS', DumpRedBalls(),
                     transitions={'succeeded':'succeeded'}
                     )

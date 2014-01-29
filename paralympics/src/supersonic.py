@@ -2,6 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped
+from std_msgs.msg import String
 from sensor_state import SensorState
 from system_states import InitSystems
 from travel_states import TravelState
@@ -36,6 +37,114 @@ def getTargetPose(ud):
     ud.target_pose = target_pose
     return 'succeeded'
 
+class TheDecider(State):
+    def __init__(self):
+        State.__init__(self,
+                outcomes=[
+                    'silo','reactor1','reactor2','reactor3','enemy',
+                    'succeeded','preempted','aborted'
+                    ]
+                )
+        # TODO Put back reactors 2 and 3
+        self.silo_tries = 0
+        self.reactor_tries = [0, -1, -1]
+        self.enemy_tries = 0
+
+    def execute(self, ud):
+        silo_valid = self.silo_tries >= 0 and self.silo_tries < 2
+        reactor_valid = map(lambda x: x>=0 and x<2, self.reactor_tries)
+
+        rospy.loginfo('---')
+        rospy.loginfo(self.silo_tries)
+        rospy.loginfo(self.reactor_tries)
+        rospy.loginfo(self.enemy_tries)
+
+        if (silo_valid and
+                self.silo_tries <= sum(map(abs,self.reactor_tries))):
+            return 'silo'
+        else:
+            minTries = min(map(abs,self.reactor_tries))
+            for i in range(3):
+                if (reactor_valid[i] and
+                        self.reactor_tries[i]<=minTries):
+                    return "reactor" + str(i+1)
+
+            if self.enemy_tries >= 0 and self.enemy_tries < 2:
+                return 'enemy'
+            else:
+                return 'succeeded'
+
+    def targetAborted(self, ud):
+        if ud.target == "reactor1":
+            self.reactor_tries[0] += 1
+        elif ud.target == "reactor2":
+            self.reactor_tries[1] += 1
+        elif ud.target == "reactor3":
+            self.reactor_tries[2] += 1
+        elif ud.target == "silo":
+            self.silo_tries += 1
+        elif ud.target == "enemy":
+            self.enemy_tries += 1
+        return 'continue'
+
+    def targetSucceeded(self, ud):
+        if ud.target == "reactor1":
+            self.reactor_tries[0] = -1
+        elif ud.target == "reactor2":
+            self.reactor_tries[1] = -1
+        elif ud.target == "reactor3":
+            self.reactor_tries[2] = -1
+        elif ud.target == "silo":
+            self.silo_tries = -1
+        elif ud.target == "enemy":
+            self.enemy_tries = -1
+        return 'continue'
+
+class ActionPackage(Sequence):
+    def __init__(self, name, meat, input_keys=[]):
+        Sequence.__init__(self,
+                outcomes=['succeeded','aborted','preempted'],
+                connector_outcome='succeeded'
+                )
+
+        self.name = name
+        self.uname = name.upper()
+        self.userdata.target = name
+
+        with self:
+            Sequence.add(name.upper() + '_FIND', CBState(getTargetPose))
+            Sequence.add(name.upper() + '_TRAVEL', TravelState())
+
+            sm_disp = SiloState()
+            Sequence.add(name.upper(), meat)
+
+    def hookRoot(self, sm_root, thinker):
+        with sm_root:
+            StateMachine.add('SM_' + self.uname, self,
+                    transitions={
+                        'succeeded':self.uname + '_SUCCEEDED',
+                        'preempted':self.uname + '_ABORTED',
+                        'aborted':self.uname + '_ABORTED'
+                        }
+                    )
+            StateMachine.add(self.uname + '_ABORTED',
+                    CBState(thinker.targetAborted,
+                        input_keys=['target'],
+                        outcomes=['continue']),
+                    transitions={'continue':'THINKER'},
+                    remapping={'target':self.name}
+                    )
+            StateMachine.add(self.uname + '_SUCCEEDED',
+                    CBState(thinker.targetSucceeded,
+                        input_keys=['target'],
+                        outcomes=['continue']),
+                    transitions={'continue':'THINKER'},
+                    remapping={'target':self.name}
+                    )
+
+
+
+
 def main():
     rospy.init_node("supersonic")
 
@@ -46,95 +155,45 @@ def main():
     sm_root.userdata.reactor2 = "reactor2"
     sm_root.userdata.reactor3 = "reactor3"
     sm_root.userdata.enemy = "enemy"
-    sm_root.userdata.high_balls = 3
-    sm_root.userdata.high_balls_2 = 1
-    sm_root.userdata.reactor_back_dist = -0.1334
-    sm_root.userdata.reactor_back_speed = 0.15
+
+    thinker = TheDecider()
+
+
+    sm_silo = ActionPackage('silo', SiloState())
+    sm_reactor1 = ActionPackage('reactor1', ReactorState())
+    sm_reactor2 = ActionPackage('reactor2', ReactorState())
+    sm_reactor3 = ActionPackage('reactor3', ReactorState())
+    sm_enemy = ActionPackage('enemy', EnemyWallState())
+
+    sm_reactor1.userdata.high_balls = 3
+    sm_reactor1.userdata.high_balls_2 = 1
+    sm_reactor1.userdata.reactor_back_dist = -0.1334
+    sm_reactor1.userdata.reactor_back_speed = 0.15
+    sm_reactor2.userdata.high_balls = 3
+    sm_reactor2.userdata.high_balls_2 = 1
+    sm_reactor2.userdata.reactor_back_dist = -0.1334
+    sm_reactor2.userdata.reactor_back_speed = 0.15
+    sm_reactor3.userdata.high_balls = 3
+    sm_reactor3.userdata.high_balls_2 = 1
+    sm_reactor3.userdata.reactor_back_dist = -0.1334
+    sm_reactor3.userdata.reactor_back_speed = 0.15
 
     with sm_root:
-        StateMachine.add('SILO_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'SILO_TRAVEL'},
-                remapping={
-                    'target':'silo',
-                    'target_pose':'silo_pose'
+        StateMachine.add('THINKER', thinker,
+                transitions={
+                    'silo':'SM_SILO',
+                    'reactor1':'SM_REACTOR1',
+                    'reactor2':'SM_REACTOR2',
+                    'reactor3':'SM_REACTOR3',
+                    'enemy':'SM_ENEMY'
                     }
                 )
-        StateMachine.add('SILO_TRAVEL', TravelState(),
-                transitions={'succeeded':'SILO'},
-                remapping={'target_pose':'silo_pose'}
-                )
 
-        sm_disp = SiloState()
-        StateMachine.add('SILO', sm_disp,
-                transitions={'succeeded':'REACTOR1_FIND'}
-                )
-
-        StateMachine.add('REACTOR1_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'REACTOR1_TRAVEL'},
-                remapping={
-                    'target':'reactor1',
-                    'target_pose':'reactor1_pose'
-                    }
-                )
-        StateMachine.add('REACTOR1_TRAVEL', TravelState(),
-                transitions={'succeeded':'REACTOR1'},
-                remapping={'target_pose':'reactor1_pose'}
-                )
-        sm_reactor1 = ReactorState()
-        StateMachine.add('REACTOR1', sm_reactor1,
-                transitions={'succeeded':'ENEMY_FIND'}
-                )
-        # TODO Change back to REACTOR2_FIND
-
-
-        StateMachine.add('REACTOR2_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'REACTOR2_TRAVEL'},
-                remapping={
-                    'target':'reactor2',
-                    'target_pose':'reactor2_pose'
-                    }
-                )
-        StateMachine.add('REACTOR2_TRAVEL', TravelState(),
-                transitions={'succeeded':'REACTOR2'},
-                remapping={'target_pose':'reactor2_pose'}
-                )
-        sm_reactor2 = ReactorState()
-        StateMachine.add('REACTOR2', sm_reactor2,
-                transitions={'succeeded':'REACTOR3_FIND'}
-                )
-
-        StateMachine.add('REACTOR3_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'REACTOR3_TRAVEL'},
-                remapping={
-                    'target':'reactor3',
-                    'target_pose':'reactor3_pose'
-                    }
-                )
-        StateMachine.add('REACTOR3_TRAVEL', TravelState(),
-                transitions={'succeeded':'REACTOR3'},
-                remapping={'target_pose':'reactor3_pose'}
-                )
-        sm_reactor3 = ReactorState()
-        StateMachine.add('REACTOR3', sm_reactor3,
-                transitions={'succeeded':'ENEMY_FIND'}
-                )
-
-        StateMachine.add('ENEMY_FIND', CBState(getTargetPose),
-                transitions={'succeeded':'ENEMY_TRAVEL'},
-                remapping={
-                    'target':'enemy',
-                    'target_pose':'enemy_pose'
-                    }
-                )
-        StateMachine.add('ENEMY_TRAVEL', TravelState(),
-                transitions={'succeeded':'ENEMY'},
-                remapping={'target_pose':'enemy_pose'}
-                )
-        sm_enemy = EnemyWallState()
-        StateMachine.add('ENEMY', sm_enemy,
-                transitions={'succeeded':'succeeded'}
-                )
-
+    sm_silo.hookRoot(sm_root, thinker)
+    sm_reactor1.hookRoot(sm_root, thinker)
+    sm_reactor2.hookRoot(sm_root, thinker)
+    sm_reactor3.hookRoot(sm_root, thinker)
+    sm_enemy.hookRoot(sm_root, thinker)
 
     sm_root.execute()
 
