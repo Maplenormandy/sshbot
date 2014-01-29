@@ -2,7 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, Pose, PointStamped, PoseStamped
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Empty
 from profit.msg import *
 from move_base_msgs.msg import *
 from b2b.msg import IRStamped, IRArray
@@ -36,7 +36,10 @@ class BallWatcher(SensorState):
         self.seq = 0
 
     def loop(self, msg, ud):
-        self.seq += 1
+        if self.failed_balls>0:
+            self.seq += 1
+        else:
+            self.seq = 0
 
         if self.failed_balls < 1:
             if len(msg.balls)>0:
@@ -48,7 +51,6 @@ class BallWatcher(SensorState):
                 self.failed_balls = 0
 
     def execute(self, ud):
-        self.failed_balls = 0
         return SensorState.execute(self, ud)
 
 
@@ -61,6 +63,11 @@ class ChaseBalls(SensorState):
         self.irmsg = None
 
         self.watcher = watcher
+        rospy.Subscriber('/overspeed', Empty, self.overspeeded)
+        self.overspeed = False
+        
+    def overspeeded(self, msg):
+        self.overspeed = True
 
     def updateIRs(self, msg):
         self.irlock.acquire()
@@ -68,6 +75,7 @@ class ChaseBalls(SensorState):
         self.irlock.release()
 
     def execute(self, ud):
+        self.overspeed = False
         self.xl = 0.0
         self.rl = 0.0
         self.lfl = 0.0
@@ -87,33 +95,43 @@ class ChaseBalls(SensorState):
 
         vel = Twist()
         self.chaseframes += 1
+        
+        if self.overspeed:
+            self.watcher.failed_balls += 1
+            vel.linear.x = -0.1;
+            self._cmd_vel.publish(vel)
+            rospy.sleep(1.0)
+            vel.linear.x = 0.0
+            self._cmd_vel.publish(vel)
+            rospy.sleep(1.0)
+            return 'succeeded'
 
-        if self.chaseframes > 80:
+        if self.chaseframes > 100:
             self.watcher.failed_balls += 1
             return 'succeeded'
 
         if irmsg != None:
-            if irmsg.fwd_l < 0.08:
+            if irmsg.fwd_l < 0.1:
                 vel.angular.z = -0.2
                 walled=True
-            elif irmsg.fwd_r < 0.08:
+            elif irmsg.fwd_r < 0.1:
                 vel.angular.z = 0.2
                 walled=True
-            elif irmsg.l.fwd < 0.16:
+            elif irmsg.l.fwd < 0.20:
                 lf = np.clip(irmsg.l.fwd, 0.05, 0.65) - 0.16
                 lfd = (lf-self.lfl) * 16.0
 
-                vel.linear.x = 0.3 + lf
+                vel.linear.x = 0.2 + lf
                 vel.angular.z = np.clip(lf+lfd*0.25, -0.6, 0.6)
 
                 self.lfl = lf
                 self.lfdl = lfd
                 walled=True
-            elif irmsg.r.fwd < 0.16:
+            elif irmsg.r.fwd < 0.20:
                 lf = np.clip(irmsg.r.fwd, 0.05, 0.65) - 0.16
                 lfd = (lf-self.lfl) * 16.0
 
-                vel.linear.x = 0.3 + lf
+                vel.linear.x = 0.2 + lf
                 vel.angular.z = np.clip(lf+lfd*0.25, -0.6, 0.6)
 
                 self.lfl = lf
@@ -126,13 +144,13 @@ class ChaseBalls(SensorState):
             self.lfdl = 0.0
             if len(msg.balls)==0:
                 self.lostframes += 1
-                if self.lostframes > 12:
+                if self.lostframes > 16:
                     vel = Twist()
                     self._cmd_vel.publish(vel)
                     self.watcher.failed_balls += 1
                     return 'succeeded'
                 else:
-                    self.vel.linear.x *= 0.75
+                    self.vel.linear.x *= 0.9
                     self.vel.angular.z *= 0.3
             else:
                 self.lostframes = 0
@@ -140,13 +158,14 @@ class ChaseBalls(SensorState):
                         key=lambda b: b.point.y-abs(b.point.x)*0.25)
 
 
-                self.vel.linear.x = self.vel.linear.x*0.5 + 0.15
+                self.vel.linear.x = self.vel.linear.x*0.5 + 0.1
                 self.vel.angular.z = np.clip(
-                        self.vel.angular.z*0.5 - ball.point.x*2.0,
+                        self.vel.angular.z*0.5 + ball.point.y*2.0,
                         -0.8, 0.8)
 
             self._cmd_vel.publish(self.vel)
         else:
+            rospy.loginfo('walled')
             self.lostframes += 0.5
             if self.lostframes > 12:
                 self.watcher.failed_balls += 1

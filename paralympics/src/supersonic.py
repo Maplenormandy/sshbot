@@ -119,29 +119,32 @@ class ActionPackage(Sequence):
             Sequence.add(name.upper(), meat)
 
     def hookRoot(self, sm_root, thinker):
-        with sm_root:
-            StateMachine.add('SM_' + self.uname, self,
-                    transitions={
-                        'succeeded':self.uname + '_SUCCEEDED',
-                        'preempted':self.uname + '_ABORTED',
-                        'aborted':self.uname + '_ABORTED'
-                        }
-                    )
-            StateMachine.add(self.uname + '_ABORTED',
-                    CBState(thinker.targetAborted,
-                        input_keys=['target'],
-                        outcomes=['continue']),
-                    transitions={'continue':'THINKER'},
-                    remapping={'target':self.name}
-                    )
-            StateMachine.add(self.uname + '_SUCCEEDED',
-                    CBState(thinker.targetSucceeded,
-                        input_keys=['target'],
-                        outcomes=['continue']),
-                    transitions={'continue':'THINKER'},
-                    remapping={'target':self.name}
-                    )
+        StateMachine.add('SM_' + self.uname, self,
+                transitions={
+                    'succeeded':self.uname + '_SUCCEEDED',
+                    'preempted':self.uname + '_ABORTED',
+                    'aborted':self.uname + '_ABORTED'
+                    }
+                )
+        StateMachine.add(self.uname + '_ABORTED',
+                CBState(thinker.targetAborted,
+                    input_keys=['target'],
+                    outcomes=['continue']),
+                transitions={'continue':'THINKER'},
+                remapping={'target':self.name}
+                )
+        StateMachine.add(self.uname + '_SUCCEEDED',
+                CBState(thinker.targetSucceeded,
+                    input_keys=['target'],
+                    outcomes=['continue']),
+                transitions={'continue':'THINKER'},
+                remapping={'target':self.name}
+                )
 
+
+
+def waitForStart(msg, ud):
+    return 'valid'
 
 
 
@@ -178,7 +181,15 @@ def main():
     sm_reactor3.userdata.reactor_back_dist = -0.1334
     sm_reactor3.userdata.reactor_back_speed = 0.15
 
+    sm_root.userdata.msg_in = None
+
     with sm_root:
+        StateMachine.add('WAITER',
+                SensorState('/start', String, 0.1, loopFn=waitForStart,
+                        outcomes=['valid']
+                        ),
+                transitions={'valid':'THINKER'}
+                )
         StateMachine.add('THINKER', thinker,
                 transitions={
                     'silo':'SM_SILO',
@@ -188,12 +199,12 @@ def main():
                     'enemy':'SM_ENEMY'
                     }
                 )
+        sm_silo.hookRoot(sm_root, thinker)
+        sm_reactor1.hookRoot(sm_root, thinker)
+        sm_reactor2.hookRoot(sm_root, thinker)
+        sm_reactor3.hookRoot(sm_root, thinker)
+        sm_enemy.hookRoot(sm_root, thinker)
 
-    sm_silo.hookRoot(sm_root, thinker)
-    sm_reactor1.hookRoot(sm_root, thinker)
-    sm_reactor2.hookRoot(sm_root, thinker)
-    sm_reactor3.hookRoot(sm_root, thinker)
-    sm_enemy.hookRoot(sm_root, thinker)
 
     sm_root.execute()
 

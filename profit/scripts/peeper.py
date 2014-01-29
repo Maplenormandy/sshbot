@@ -20,10 +20,10 @@ class Peeper:
     GREEN_LOW = 50
     GREEN_HI = 110
 
-    RED_HI = 10
+    RED_HI = 40
     RED_LOW = 170
 
-    EVALPOINT = (52,230)
+    EVALPOINT = (55,230)
 
     def __init__(self, colourCall=print, camera=0, debug=False):
         self.cap = cv2.VideoCapture(camera)

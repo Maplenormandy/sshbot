@@ -38,13 +38,13 @@ class locator():
         initialpose.pose.pose.position.x = self.startPose[0]*0.0254
         initialpose.pose.pose.position.y = self.startPose[1]*0.0254
         initialpose.pose.covariance = [
-                1e-2, 0, 0, 0, 0, 0,
-                0, 1e-2, 0, 0, 0, 0,
-                0, 0,  1e6, 0, 0, 0,
-                0, 0, 0,  1e6, 0, 0,
-                0, 0, 0, 0,  1e6, 0,
-                0, 0, 0, 0, 0, 1e-3]
-        pose0quat = tf.transformations.quaternion_from_euler(0, 0, self.startPose[2])
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0]
+        pose0quat = tf.transformations.quaternion_from_euler(0, 0, self.startPose[2]-math.pi/2.0)
         initialpose.pose.pose.orientation.x = pose0quat[0]
         initialpose.pose.pose.orientation.y = pose0quat[1]
         initialpose.pose.pose.orientation.z = pose0quat[2]
@@ -225,45 +225,61 @@ class locator():
         resp.header.stamp = rospy.Time.now()
         resp.header.frame_id = "map"
 
-        resp.reactor1.position.x = self.reactor[0][0]
-        resp.reactor1.position.y = self.reactor[0][1]
-        reactor1quat = tf.transformations.quaternion_from_euler(0, 0, self.reactor[0][2])
-        resp.reactor1.orientation.x = reactor1quat[0]
-        resp.reactor1.orientation.y = reactor1quat[1]
-        resp.reactor1.orientation.z = reactor1quat[2]
-        resp.reactor1.orientation.w = reactor1quat[3]
+        try:
+            resp.reactor1.position.x = self.reactor[0][0]
+            resp.reactor1.position.y = self.reactor[0][1]
+            reactor1quat = tf.transformations.quaternion_from_euler(0, 0, self.reactor[0][2])
+            resp.reactor1.orientation.x = reactor1quat[0]
+            resp.reactor1.orientation.y = reactor1quat[1]
+            resp.reactor1.orientation.z = reactor1quat[2]
+            resp.reactor1.orientation.w = reactor1quat[3]
+        except:
+            rospy.loginfo('Error with reactor1')
 
-        resp.reactor2.position.x = self.reactor[1][0]
-        resp.reactor2.position.y = self.reactor[1][1]
-        reactor2quat = tf.transformations.quaternion_from_euler(0, 0, self.reactor[1][2])
-        resp.reactor2.orientation.x = reactor2quat[0]
-        resp.reactor2.orientation.y = reactor2quat[1]
-        resp.reactor2.orientation.z = reactor2quat[2]
-        resp.reactor2.orientation.w = reactor2quat[3]
+        try:
+            resp.reactor2.position.x = self.reactor[1][0]
+            resp.reactor2.position.y = self.reactor[1][1]
+            reactor2quat = tf.transformations.quaternion_from_euler(0, 0, self.reactor[1][2])
+            resp.reactor2.orientation.x = reactor2quat[0]
+            resp.reactor2.orientation.y = reactor2quat[1]
+            resp.reactor2.orientation.z = reactor2quat[2]
+            resp.reactor2.orientation.w = reactor2quat[3]
+        except:
+            rospy.loginfo('Error with reactor2')
 
-        resp.reactor3.position.x = self.reactor[2][0]
-        resp.reactor3.position.y = self.reactor[2][1]
-        reactor3quat = tf.transformations.quaternion_from_euler(0, 0, self.reactor[2][2])
-        resp.reactor3.orientation.x = reactor3quat[0]
-        resp.reactor3.orientation.y = reactor3quat[1]
-        resp.reactor3.orientation.z = reactor3quat[2]
-        resp.reactor3.orientation.w = reactor3quat[3]
+        try:
+            resp.reactor3.position.x = self.reactor[2][0]
+            resp.reactor3.position.y = self.reactor[2][1]
+            reactor3quat = tf.transformations.quaternion_from_euler(0, 0, self.reactor[2][2])
+            resp.reactor3.orientation.x = reactor3quat[0]
+            resp.reactor3.orientation.y = reactor3quat[1]
+            resp.reactor3.orientation.z = reactor3quat[2]
+            resp.reactor3.orientation.w = reactor3quat[3]
+        except:
+            rospy.loginfo('Error with reactor3')
 
-        resp.silo.position.x = self.silo[0][0]
-        resp.silo.position.y = self.silo[0][1]
-        siloquat = tf.transformations.quaternion_from_euler(0, 0, self.silo[0][2])
-        resp.silo.orientation.x = siloquat[0]
-        resp.silo.orientation.y = siloquat[1]
-        resp.silo.orientation.z = siloquat[2]
-        resp.silo.orientation.w = siloquat[3]
+        try:
+            resp.silo.position.x = self.silo[0][0]
+            resp.silo.position.y = self.silo[0][1]
+            siloquat = tf.transformations.quaternion_from_euler(0, 0, self.silo[0][2])
+            resp.silo.orientation.x = siloquat[0]
+            resp.silo.orientation.y = siloquat[1]
+            resp.silo.orientation.z = siloquat[2]
+            resp.silo.orientation.w = siloquat[3]
+        except:
+            rospy.loginfo('Error with silo')
 
-        resp.opponent.position.x = self.opponent[0][0]
-        resp.opponent.position.y = self.opponent[0][1]
-        opponentquat = tf.transformations.quaternion_from_euler(0, 0, self.opponent[0][2])
-        resp.opponent.orientation.x = opponentquat[0]
-        resp.opponent.orientation.y = opponentquat[1]
-        resp.opponent.orientation.z = opponentquat[2]
-        resp.opponent.orientation.w = opponentquat[3]
+        try:
+            resp.opponent.position.x = self.opponent[0][0]
+            resp.opponent.position.y = self.opponent[0][1]
+            opponentquat = tf.transformations.quaternion_from_euler(0, 0, self.opponent[0][2])
+            resp.opponent.orientation.x = opponentquat[0]
+            resp.opponent.orientation.y = opponentquat[1]
+            resp.opponent.orientation.z = opponentquat[2]
+            resp.opponent.orientation.w = opponentquat[3]
+        except:
+            rospy.loginfo('Error with opponent')
+
         return resp
 
 def normalize(num):
@@ -282,7 +298,7 @@ def is_number(s):
 
 
 if __name__ == "__main__":
-    start_pub = rospy.Publisher('start', String, latch=True)
+    start_pub = rospy.Publisher('start', String)
     mapString = "22.00:4.00,6.00,-2.36:1.00,3.00,1.00,4.00,N:1.00,4.00,0.00,5.00,N:0.00,5.00,0.00,6.00,N:0.00,6.00,1.00,6.00,N:1.00,6.00,1.00,7.00,N:1.00,7.00,1.00,8.00,N:1.00,8.00,2.00,8.00,R:2.00,8.00,4.00,8.00,S:4.00,8.00,5.00,7.00,N:5.00,7.00,6.00,6.00,N:6.00,6.00,5.00,5.00,N:5.00,5.00,6.00,4.00,N:6.00,4.00,5.00,3.00,R:5.00,3.00,4.00,3.00,N:4.00,3.00,4.00,4.00,N:4.00,4.00,4.00,5.00,N:4.00,5.00,3.00,4.00,N:3.00,4.00,3.00,3.00,N:3.00,3.00,2.00,3.00,N:2.00,3.00,1.00,3.00,R:"
 
     rospy.init_node('locator_server')
