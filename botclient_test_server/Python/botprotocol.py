@@ -1,6 +1,6 @@
 from twisted.internet import protocol, reactor
 from twisted.protocols import basic
-import json, handler, re
+import json, handler, re, time
 
 #this needs to be improved so that the token must not be checked every command. Probably the best improvement is to save the session
 #in the factory by checking the token once
@@ -28,8 +28,12 @@ class BotProtocol(basic.LineReceiver):
         #mapString = "22.0:1,1,3.14159:0,0,0,3,N:0,3,0,4,S:0,4,2,4,O:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,0,0,N:"
         #Next House v2: 
         #mapString = "22.0:1.0,1.0,0.0:0,0,0,3,N:0,3,0,4,S:0,4,1,4,O:1,4,2,4,R:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,2,0,N:2,0,1,0,R:1,0,0,0,N"
-
+        self.transport.write("connected\n")
+        time.sleep(2)
         self.transport.write(mapString)
+        time.sleep(3)
+        self.transport.write("start\n")
+        print "started"
 
 
     def connectionLost(self, reason):

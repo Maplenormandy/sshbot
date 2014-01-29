@@ -48,8 +48,8 @@ class BotFactory(protocol.ServerFactory):
 
     def __init__(self):
         self.connections=0
-        self.db=json.loads(open(filename, 'r').read())
-        #print self.db
+        self.db={}
+        print "Running server!"
         self.clients=[]
 
     def addConnection(self, client):

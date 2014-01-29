@@ -252,6 +252,13 @@ def normalize(num):
         num += 2.0*math.pi
     return num
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 
 if __name__ == "__main__":
     s = socket.socket()         # Create a socket object
@@ -259,12 +266,19 @@ if __name__ == "__main__":
     #host = "18.150.7.174"      # The actual server for competition
     port = 6667 
     s.connect((host, port))
-    mapString = s.recv(1024).strip()
-    print mapString
-    s.close                     # Close the socket when done
-
+    response = s.recv(1024)
+    while not is_number(response[0]):
+        print "Resp= " + response
+        response = s.recv(1024)
+    mapString = response.strip()
+    print "mapstring= " + mapString
     rospy.init_node('locator_server')
     loc = locator(mapString)
+    while True:
+        if s.recv(1024) == "start\n":
+            print "started!"
+            s.close             # Close the socket when done
+            break                   
     rospy.spin()
 
 
