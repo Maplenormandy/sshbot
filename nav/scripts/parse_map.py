@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import roslib; roslib.load_manifest('nav')
-import socket 
+import socket
 import Queue
 import pygame
 import rospy
@@ -9,12 +9,13 @@ import math
 import tf
 from nav.srv import *
 from std_msgs.msg import Header
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 
 class locator():
     def __init__(self, mapString):
-        self.parseMap(mapString)
         self.srv = rospy.Service('locator', Locator, self.handle_locator)
+        self.poser = rospy.Publisher('initialpose', PoseWithCovarianceStamped, latch=True)
+        self.parseMap(mapString)
 
     def parseMap(self, mapString):
         self.silo = []
@@ -32,6 +33,26 @@ class locator():
         self.size_factor = gridSize #inches
         i += 1
         self.startPose = self.parsePose(parts[i])
+        # Send the starting position
+        initialpose = PoseWithCovarianceStamped()
+        initialpose.pose.pose.position.x = self.startPose[0]*0.0254
+        initialpose.pose.pose.position.y = self.startPose[1]*0.0254
+        initialpose.pose.covariance = [
+                1e-2, 0, 0, 0, 0, 0,
+                0, 1e-2, 0, 0, 0, 0,
+                0, 0,  1e6, 0, 0, 0,
+                0, 0, 0,  1e6, 0, 0,
+                0, 0, 0, 0,  1e6, 0,
+                0, 0, 0, 0, 0, 1e-3]
+        pose0quat = tf.transformations.quaternion_from_euler(0, 0, self.startPose[2])
+        initialpose.pose.pose.orientation.x = pose0quat[0]
+        initialpose.pose.pose.orientation.y = pose0quat[1]
+        initialpose.pose.pose.orientation.z = pose0quat[2]
+        initialpose.pose.pose.orientation.w = pose0quat[3]
+        initialpose.header.stamp = rospy.Time.now()
+        initialpose.header.frame_id = "map"
+        self.poser.publish(initialpose)
+
         i += 1
         parts = parts[i:]
 
@@ -264,7 +285,7 @@ if __name__ == "__main__":
     s = socket.socket()         # Create a socket object
     host = socket.gethostname() # Get local machine name
     #host = "18.150.7.174"      # The actual server for competition
-    port = 6667 
+    port = 6667
     s.connect((host, port))
     response = s.recv(1024)
     while not is_number(response[0]):
@@ -278,7 +299,7 @@ if __name__ == "__main__":
         #if s.recv(1024) == "start\n":
             print "started!"
             s.close             # Close the socket when done
-            break                   
+            break
     rospy.spin()
 
 
