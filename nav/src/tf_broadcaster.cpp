@@ -11,6 +11,7 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "tf_broadcaster");
     ros::NodeHandle n;
 
+    /*
     ros::Publisher initpos = 
         n.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 15, true);
     geometry_msgs::PoseWithCovarianceStamped pose;
@@ -23,10 +24,11 @@ int main(int argc, char** argv){
     pose.pose.pose.position.x = 0.558798517172;
     pose.pose.pose.position.y = 0.558798517172;
     initpos.publish(pose);
+    */
 
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat =
-        tf::createQuaternionMsgFromYaw(pi);
+        tf::createQuaternionMsgFromYaw(0.0);
     //geometry_msgs::Quaternion odom_quat =
     //    tf::createQuaternionMsgFromYaw(0.0);
 

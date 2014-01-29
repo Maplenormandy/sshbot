@@ -266,21 +266,48 @@ class AlignAndQueue(Concurrence):
 class AlignToSiloBall(SensorState):
     def __init__(self, cmd_vel_pub):
         SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.1,
-                outcomes=['succeeded', 'preempted', 'aborted'])
+                outcomes=['succeeded', 'preempted', 'aborted', 'realign'])
 
         self._cmd_vel = cmd_vel_pub
+        rospy.Subscriber('/overspeed', Empty, self.overspeeded)
+        self.overspeed = False
+
+    def overspeeded(self, msg):
+        self.overspeed = True
+        rospy.loginfo('overspeed')
 
     def loop(self, msg, ud):
         vel = Twist()
 
+        if self.overspeed:
+            vel.linear.x = -0.15
+            self._cmd_vel.publish(vel)
+            rospy.sleep(1.0)
+            vel.linear.x = 0.0
+            self._cmd_vel.publish(vel)
+            return 'realign'
+        if len(msg.balls)==0:
+            self._cmd_vel.publish(vel)
+            return 'aborted'
+
         ball = min(msg.balls, key=lambda b: abs(b.point.x-2.0*b.point.z))
 
-        if abs(.165-ball.point.z)<0.04:
+        rospy.loginfo('---')
+        rospy.loginfo(ball.point.z)
+        rospy.loginfo(ball.point.y)
+
+        if abs(ball.point.y)<0.07 and abs(.15-ball.point.z)<0.007:
             self._cmd_vel.publish(vel)
             return 'succeeded'
 
-        vel.linear.x = np.clip((.165-ball.point.z)*3.0,-0.06,0.06)
-        vel.angular.x = np.clip(-(ball.point.x)*4.0, -0.6,0.6)
+        self.radii = np.roll(self.radii, 1)
+        self.radii[0] = ball.point.z
+
+        vel.linear.x = np.clip((.15-ball.point.z)*2.0,-0.08,0.08)
+        vel.angular.z = np.clip((ball.point.y)*1.0, -0.6,0.6)
+
+        #self.heights = np.roll(self.heights, 1)
+        #self.heights[0] = height
 
 
         """
@@ -288,6 +315,18 @@ class AlignToSiloBall(SensorState):
         """
 
         self._cmd_vel.publish(vel)
+
+    def execute(self, ud):
+        vel = Twist()
+        vel.linear.x = -0.12
+        self._cmd_vel.publish(vel)
+        rospy.sleep(0.5)
+        vel.linear.x = 0.0
+        self._cmd_vel.publish(vel)
+        self.overspeed = False
+        self.radii = np.array([.10]*5)
+        return SensorState.execute(self, ud)
+
 
 
 class AlignToSilo(SensorState):
@@ -313,8 +352,6 @@ class AlignToSilo(SensorState):
 
         vel = Twist()
 
-        self.heights = np.roll(self.heights, 1)
-        self.heights[0] = height
 
         if self.centering:
             rospy.loginfo('centering')
@@ -331,21 +368,24 @@ class AlignToSilo(SensorState):
             if not self.driving:
                 self.avgX0 = avgX
             self.driving = True
-            rospy.loginfo(self.driving)
+            rospy.loginfo(np.average(self.heights))
             if self.driveCentering:
                 rospy.loginfo('drive centering')
                 if abs(avgX+self.avgX0*0.8)<0.04:
                     self.driveCentering = False
                 else:
                     vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
-            elif abs(.10-height)<0.05:
+            elif (height > .13 and height < .20
+                    and height < np.average(self.heights)):
                 vel = Twist()
                 self._cmd_vel.publish(vel)
                 return 'succeeded'
             else:
-                vel.angular.z = np.clip(-avgX*3.0, -0.4, 0.4)
+                self.heights = np.roll(self.heights, 1)
+                self.heights[0] = height
+                vel.angular.z = np.clip(-avgX*2.0, -0.4, 0.4)
                 rospy.loginfo('driving')
-                vel.linear.x = np.clip((height-0.10)*0.6,-0.10,0.10)
+                vel.linear.x = np.clip(abs(height-0.20)*0.6,0.0,0.10)
 
 
         """
@@ -355,7 +395,7 @@ class AlignToSilo(SensorState):
         self._cmd_vel.publish(vel)
 
     def execute(self, ud):
-        self.heights = np.array([.10]*5)
+        self.heights = np.array([0.0]*10)
         global attemptAlign
         if not attemptAlign:
             return 'succeeded'
@@ -398,14 +438,14 @@ class AlignToSilo(SensorState):
 
                 self._msg = None
                 msg = None
-            elif not self.driving:
-                rospy.loginfo(self.driving)
-                rospy.loginfo('backing up')
-                self.foundWall = False
-                self.aligning = True
-                vel = Twist()
-                vel.linear.x = -0.05
-                self._cmd_vel.publish(vel)
+            #elif not self.driving:
+            #    rospy.loginfo(self.driving)
+            #    rospy.loginfo('backing up')
+            #    self.foundWall = False
+            #    self.aligning = True
+            #    vel = Twist()
+            #    vel.linear.x = -0.05
+            #    self._cmd_vel.publish(vel)
             else:
                 return 'succeeded'
 
@@ -420,12 +460,12 @@ class GrabSiloBalls(State):
 
     def execute(self, ud):
         msg = Float32()
-        msg.data = -0.4
+        msg.data = -0.3
         self._sas_pub.publish(msg)
         rospy.sleep(1.2)
-        msg.data = 0.4
+        msg.data = 0.3
         self._sas_pub.publish(msg)
-        rospy.sleep(0.9)
+        rospy.sleep(1.6)
         msg.data = 0.0
         self._sas_pub.publish(msg)
 
@@ -447,19 +487,55 @@ class CheckBallsFromSilo(SensorState):
         SensorState.__init__(self, '/profit/ball_silo_raw',
 """
 
-# TODO remove hack here
-ballsColl = 0
-
-class CheckSiloBalls(State):
+class CheckSiloBalls(SensorState):
     def __init__(self):
-        State.__init__(self, outcomes=['valid', 'invalid', 'preempted'])
+        SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.1,
+                outcomes=['realign', 'valid', 'invalid', 'preempted'])
+        self.lostframes = 0
+        self.totalframes = 0
+        self.ballsColl = 0
+
+    def loop(self, msg, ud):
+        self.totalframes += 1
+
+        if self.totalframes > 120:
+            return 'invalid'
+
+        if len(msg.balls) > 0:
+            ball = min(msg.balls,
+                    key=lambda b: abs(b.point.x-2.0*b.point.z))
+            rospy.loginfo(abs(ball.point.x-2.0*ball.point.z))
+
+            if abs(ball.point.x-2.0*ball.point.z) < 0.05:
+                rospy.loginfo(abs(ball.point.x-2.0*ball.point.z))
+                self.lostframes = 0
+
+                if abs(ball.point.y - np.average(self.center[0]))<0.04:
+                    if abs(ball.point.y) < 0.06:
+                        return 'valid'
+                    else:
+                        return 'realign'
+
+                self.center = np.roll(self.center, 1)
+                self.center[0] = ball.point.y
+            else:
+                self.lostframes += 1
+
+        else:
+            self.lostframes += 1
+
+        if self.lostframes > 48:
+            return 'invalid'
+
 
     def execute(self, ud):
-        global ballsColl
-        ballsColl += 1
-        rospy.sleep(1.0)
-        if ballsColl < 2:
-            return 'valid'
+        self.ballsColl += 1
+        self.totalframes = 0
+        self.lostframes = 0
+        self.center = np.array([.0]*3)
+
+        if self.ballsColl < 5:
+            return SensorState.execute(self, ud)
         else:
             return 'invalid'
 
@@ -477,9 +553,15 @@ class SiloState(StateMachine):
             StateMachine.add('ALIGN_SILO', AlignToSilo(cmd_vel),
                     transitions={'succeeded':'ALIGN_SILO_BALL'})
             StateMachine.add('ALIGN_SILO_BALL', AlignToSiloBall(cmd_vel),
-                    transitions={'succeeded':'CHECK_SILO'})
+                    transitions={
+                        'succeeded':'CHECK_SILO',
+                        'realign':'ALIGN_SILO',
+                        'aborted':'CHECK_SILO'
+                        })
             StateMachine.add('CHECK_SILO', CheckSiloBalls(),
-                    transitions={'valid':'GRAB_SILO',
+                    transitions={
+                        'valid':'GRAB_SILO',
+                        'realign':'ALIGN_SILO_BALL',
                         'invalid':'succeeded'})
             StateMachine.add('GRAB_SILO', GrabSiloBalls(sas_pub),
                     transitions={'succeeded':'CHECK_SILO',

@@ -11,7 +11,7 @@ import sys
 import time
 
 class BallSeeingEye:
-    AREA_THRESHOLD = 100
+    AREA_THRESHOLD = 70
     BLUR = 10
     DESIRED_WIDTH = 352
     DESIRED_HEIGHT = 288
@@ -116,7 +116,7 @@ class BallSeeingEye:
 #                 forbidden.append(redWalls)
 
             # Find Teal WALLS
-            tealWalls = self.wallsFind(hsv, frame, 'G')
+            tealWalls = self.wallsFind(hsv, frame, 'T')
             if not tealWalls == None:
                 wallsList.append(tealWalls)
                 #forbidden.append(tealWalls)
