@@ -51,6 +51,7 @@ class BallWatcher(SensorState):
                 self.failed_balls = 0
 
     def execute(self, ud):
+        self.seq = 0
         return SensorState.execute(self, ud)
 
 
