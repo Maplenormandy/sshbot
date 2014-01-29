@@ -16,7 +16,7 @@ from square import DriveStraight
 
 __all__ = ['SiloState', 'ReactorState', 'EnemyWallState']
 
-attemptAlign = False
+attemptAlign = True
 
 
 @cb_interface(
@@ -263,6 +263,32 @@ class AlignAndQueue(Concurrence):
             return 'aborted'
 
 
+class AlignToSiloBall(SensorState):
+    def __init__(self, cmd_vel_pub):
+        SensorState.__init__(self, '/profit/balls_raw', BallArray, 0.1,
+                outcomes=['succeeded', 'preempted', 'aborted'])
+
+        self._cmd_vel = cmd_vel_pub
+
+    def loop(self, msg, ud):
+        vel = Twist()
+
+        ball = min(msg.balls, key=lambda b: abs(b.point.x-2.0*b.point.z))
+
+        if abs(.165-ball.point.z)<0.04:
+            self._cmd_vel.publish(vel)
+            return 'succeeded'
+
+        vel.linear.x = np.clip((.165-ball.point.z)*3.0,-0.06,0.06)
+        vel.angular.x = np.clip(-(ball.point.x)*4.0, -0.6,0.6)
+
+
+        """
+        SILO
+        """
+
+        self._cmd_vel.publish(vel)
+
 
 class AlignToSilo(SensorState):
     def __init__(self, cmd_vel_pub):
@@ -275,6 +301,7 @@ class AlignToSilo(SensorState):
         """
         SILO
         """
+
         avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
         diffY = (msg.a.y - msg.d.y) - (msg.b.y - msg.c.y)
         height = (msg.d.y - msg.a.y) + (msg.c.y - msg.b.y)
@@ -379,6 +406,8 @@ class AlignToSilo(SensorState):
                 vel = Twist()
                 vel.linear.x = -0.05
                 self._cmd_vel.publish(vel)
+            else:
+                return 'succeeded'
 
         """
         SILO
@@ -446,6 +475,8 @@ class SiloState(StateMachine):
 
         with self:
             StateMachine.add('ALIGN_SILO', AlignToSilo(cmd_vel),
+                    transitions={'succeeded':'ALIGN_SILO_BALL'})
+            StateMachine.add('ALIGN_SILO_BALL', AlignToSiloBall(cmd_vel),
                     transitions={'succeeded':'CHECK_SILO'})
             StateMachine.add('CHECK_SILO', CheckSiloBalls(),
                     transitions={'valid':'GRAB_SILO',
@@ -485,7 +516,7 @@ class AlignToEnemyWall(SensorState):
 
         vel = Twist()
 
-        vel.angular.z = np.clip(-diffY*10.0, -0.6, 0.6)
+        vel.angular.z = np.clip(-diffY*6.0, -0.6, 0.6)
         rospy.loginfo('driving')
         vel.linear.x = 0.15
 
@@ -542,14 +573,6 @@ class AlignToEnemyWall(SensorState):
 
                 self._msg = None
                 msg = None
-            elif not self.driving:
-                rospy.loginfo(self.driving)
-                rospy.loginfo('backing up')
-                self.foundWall = False
-                self.aligning = True
-                vel = Twist()
-                vel.linear.x = -0.05
-                self._cmd_vel.publish(vel)
 
 class DumpRedBalls(State):
     def __init__(self):
@@ -598,7 +621,7 @@ class EnemyWallState(StateMachine):
 def main():
     rospy.init_node('docktest')
 
-    sm_dock = EnemyWallState()
+    sm_dock = SiloState()
     sm_dock.execute()
 
 

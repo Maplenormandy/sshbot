@@ -27,23 +27,23 @@ class BallSeeingEye:
     #BLUE = [[100, 140,  .1, .9, .1, .9]]
     BLUE = [[95, 150,  0.0, 1.0, 0.4, 1.0]]
     TEAL = [[80, 95,  .1, .9, .2, .9]]
-    PURPLE = [[130, 160,  .2, .8, .2, .9]]
+    PURPLE = [[130, 160,  .1, .9, .1, .9]]
     YELLOW = [[10, 40, .3,  .9, .3, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL, 'P': PURPLE}
     LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0), 'G':(0,0,255), 'P': (0,0,255)}
 
     def __init__(self, ballCb=print, wallCb=print,
             camera=2, debug=False, quickstart = False):
-        rospy.loginfo('camera ' + str(camera))
+        print('camera ' + str(camera))
         self.cap = cv2.VideoCapture(camera)
         if not self.cap.isOpened():
-            rospy.loginfo('camera ' + str(camera+1))
+            print('camera ' + str(camera+1))
             self.cap = cv2.VideoCapture(camera+1)
         if not self.cap.isOpened():
-            rospy.loginfo('camera ' + str(camera-1))
+            print('camera ' + str(camera-1))
             self.cap = cv2.VideoCapture(camera-1)
         if not self.cap.isOpened():
-            rospy.loginfo('camera ' + str(camera-2))
+            print('camera ' + str(camera-2))
             self.cap = cv2.VideoCapture(camera-2)
         print("Setting up camera feed...")
         time.sleep(1)
