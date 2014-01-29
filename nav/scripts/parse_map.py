@@ -275,7 +275,7 @@ if __name__ == "__main__":
     rospy.init_node('locator_server')
     loc = locator(mapString)
     while True:
-        if s.recv(1024) == "start\n":
+        #if s.recv(1024) == "start\n":
             print "started!"
             s.close             # Close the socket when done
             break                   

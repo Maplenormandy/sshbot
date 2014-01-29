@@ -22,18 +22,18 @@ class BotProtocol(basic.LineReceiver):
         #IDC Map - Hexagon: top of hexagon is virtual silo
         #mapString = "22.0:1.0,1.0,0:0,0,0,3,N:0,3,1,4,N:1,4,2,4,S:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,0,0,O:" 
         #IDC Map with middle wall awkwardly inbetween
-        mapString = "22.0:1.0,1.0,0:0,0,0,3,N:0,3,1,4,N:1,4,2,4,S:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,0,0,O:0,2,1,2,N:"
+        mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,N:0,3,1,4,N:1,4,2,4,S:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,O::"
 
         #Next House v1: 
         #mapString = "22.0:1,1,3.14159:0,0,0,3,N:0,3,0,4,S:0,4,2,4,O:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,0,0,N:"
         #Next House v2: 
         #mapString = "22.0:1.0,1.0,0.0:0,0,0,3,N:0,3,0,4,S:0,4,1,4,O:1,4,2,4,R:2,4,2,3,N:2,3,3,2,N:3,2,3,1,R:3,1,3,0,N:3,0,2,0,N:2,0,1,0,R:1,0,0,0,N"
-        self.transport.write("connected\n")
-        time.sleep(2)
+        #self.transport.write("connected\n")
+        #time.sleep(2)
         self.transport.write(mapString)
-        time.sleep(3)
-        self.transport.write("start\n")
-        print "started"
+        #time.sleep(3)
+        #self.transport.write("start\n")
+        #print "started"
 
 
     def connectionLost(self, reason):
