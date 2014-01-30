@@ -1,2 +1,3 @@
 max_obstacle_height: 0.3556 
 #footprint: [[x0, y0], [x1, y1], ... [xn, yn]]
+robot_radius: 0.17

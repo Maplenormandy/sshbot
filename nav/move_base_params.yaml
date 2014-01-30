@@ -1,9 +1,6 @@
 base_local_planner: "base_local_planner/TrajectoryPlannerROS"
-
-recovery_behaviors: [{name: conservative_reset, type: clear_costmap_recovery/ClearCostmapRecovery}, {name: rotate_recovery, type: rotate_recovery/RotateRecovery}, {name: aggressive_reset, type: clear_costmap_recovery/ClearCostmapRecovery}]
 clearing_rotation_allowed: true
 shutdown_costmaps: false
 
-controller_patience: 5.0
 controller_frequency: 10.0
 

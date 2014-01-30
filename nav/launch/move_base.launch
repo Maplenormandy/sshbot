@@ -4,9 +4,8 @@
   <!-- Run the map server -->
   <node name="map_server" pkg="map_server" type="map_server" args="$(find nav)/map/map.yaml"/>
 
-
-  <node pkg="nav" type="tf_broadcaster" name="tf_broadcaster" output="screen" />
-
+  <include file="$(find nav)/launch/nav.launch" />
+  <include file="$(find nav)/launch/amcl_diff.launch" />
 
   <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
     <rosparam file="$(find nav)/costmap_common_params.yaml" command="load" ns="global_costmap" />
@@ -16,5 +15,4 @@
     <rosparam file="$(find nav)/base_local_planner_params.yaml" command="load" />
     <rosparam file="$(find nav)/move_base_params.yaml" command="load" />
   </node>
-
 </launch>
