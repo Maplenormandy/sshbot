@@ -15,10 +15,10 @@
   <param name="resample_interval" value="2"/>
   <param name="transform_tolerance" value="0.2" />
 
-  <param name="recovery_alpha_slow" value="0.01"/>
-  <param name="recovery_alpha_fast" value="0.1"/>
+  <param name="recovery_alpha_slow" value="0.0"/>
+  <param name="recovery_alpha_fast" value="0.0"/>
 
-  <param name="save_pose_rate" value=".5"/>
+  <param name="save_pose_rate" value="-1.0"/>
 
 
   <param name="laser_max_beams" value="30"/>
