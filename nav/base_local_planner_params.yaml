@@ -1,7 +1,7 @@
 TrajectoryPlannerROS:
-  max_vel_x: 0.7
-  min_vel_x: 0.05
-  max_rotational_vel: 1.0
+  max_vel_x: .2
+  min_vel_x: 0.1
+  max_rotational_vel: 1.2
   min_in_place_rotational_vel: 0.4
 
   sim_granularity: 0.05

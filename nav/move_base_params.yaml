@@ -1,5 +1,6 @@
-clearing_rotation_allowed: false
-shutdown_costmaps: false
 base_local_planner: "base_local_planner/TrajectoryPlannerROS"
+clearing_rotation_allowed: true
+shutdown_costmaps: false
+
 controller_frequency: 10.0
 
