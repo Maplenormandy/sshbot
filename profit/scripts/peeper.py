@@ -10,20 +10,20 @@ import sys
 import time
 
 class Peeper:
-    BLUR = 1
+    BLUR = 4
     SLEEP = 20
     DESIRED_WIDTH = 352
     DESIRED_HEIGHT = 288
 
-    BALL_LIGHT = 20
-    BALL_SAT = 95
+    BALL_SAT = 100
     GREEN_LOW = 50
     GREEN_HI = 110
 
-    RED_HI = 40
-    RED_LOW = 170
-
-    EVALPOINT = (55,230)
+    RED_HI = 20
+    RED_LOW = 160
+    BRIGHT = 120
+    
+    EVALPOINT = (40 ,50)
 
     def __init__(self, colourCall=print, camera=0, debug=False):
         self.cap = cv2.VideoCapture(camera)
@@ -52,16 +52,17 @@ class Peeper:
 
             h,s,v = hsv[self.EVALPOINT[1], self.EVALPOINT[0]]
 
-            if v > self.BALL_LIGHT and v>self.BALL_SAT:
-                if h > self.RED_LOW or h < self.RED_HI:
+            if s > self.BALL_SAT:
+                if (h > self.RED_LOW or h < self.RED_HI) and v < self.BRIGHT:
                     self.colourCall("R")
+                    print("REDDDDDDDDDDDD")
                 else:
                     self.colourCall("G")
             else:
                 self.colourCall("N")
 
             if self.debug:
-                print(h,s,v)
+                print(h,s,v,"T")
             cv2.imshow('FullImage', blur)
 
     def execute(self):
