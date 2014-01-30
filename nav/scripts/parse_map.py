@@ -305,13 +305,13 @@ def is_number(s):
 if __name__ == "__main__":
     rospy.init_node('locator_server')
     start_pub = rospy.Publisher('start', String)
-    mapString = "22.00:4.00,6.00,-2.36:1.00,3.00,1.00,4.00,N:1.00,4.00,0.00,5.00,N:0.00,5.00,0.00,6.00,N:0.00,6.00,1.00,6.00,N:1.00,6.00,1.00,7.00,N:1.00,7.00,1.00,8.00,N:1.00,8.00,2.00,8.00,R:2.00,8.00,4.00,8.00,S:4.00,8.00,5.00,7.00,N:5.00,7.00,6.00,6.00,N:6.00,6.00,5.00,5.00,N:5.00,5.00,6.00,4.00,N:6.00,4.00,5.00,3.00,R:5.00,3.00,4.00,3.00,N:4.00,3.00,4.00,4.00,N:4.00,4.00,4.00,5.00,N:4.00,5.00,3.00,4.00,N:3.00,4.00,3.00,3.00,N:3.00,3.00,2.00,3.00,N:2.00,3.00,1.00,3.00,R:"
-    print mapString
-    loc = locator(mapString)
+    #mapString = "22.00:4.00,6.00,-2.36:1.00,3.00,1.00,4.00,N:1.00,4.00,0.00,5.00,N:0.00,5.00,0.00,6.00,N:0.00,6.00,1.00,6.00,N:1.00,6.00,1.00,7.00,N:1.00,7.00,1.00,8.00,N:1.00,8.00,2.00,8.00,R:2.00,8.00,4.00,8.00,S:4.00,8.00,5.00,7.00,N:5.00,7.00,6.00,6.00,N:6.00,6.00,5.00,5.00,N:5.00,5.00,6.00,4.00,N:6.00,4.00,5.00,3.00,R:5.00,3.00,4.00,3.00,N:4.00,3.00,4.00,4.00,N:4.00,4.00,4.00,5.00,N:4.00,5.00,3.00,4.00,N:3.00,4.00,3.00,3.00,N:3.00,3.00,2.00,3.00,N:2.00,3.00,1.00,3.00,R:"
+    #print mapString
+    #loc = locator(mapString)
 
     s = socket.socket()         # Create a socket object
-    #host = socket.gethostname() # Get local machine name
-    host = "18.150.7.174"      # The actual server for competition
+    host = socket.gethostname() # Get local machine name
+    #host = "18.150.7.174"      # The actual server for competition
     port = 6667
     s.connect((host, port))
     while True:
@@ -325,6 +325,7 @@ if __name__ == "__main__":
         elif resp[:8] == '{\"MAP\": ':
             mapString = resp[9:-3]
             print mapString
-            #loc = locator(mapString)
+            loc = locator(mapString)
+            start_pub.publish(String("start"))
     rospy.spin()
 

@@ -1,5 +1,2 @@
 max_obstacle_height: 0.3556 
-obstacle_range: 0.3
-raytrace_range: 0.8
 #footprint: [[x0, y0], [x1, y1], ... [xn, yn]]
-robot_radius: 0.17
