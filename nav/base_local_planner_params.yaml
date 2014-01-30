@@ -1,8 +1,10 @@
-DWAPlannerROS:
-  max_vel_x: 0.2
+TrajectoryPlannerROS:
+  max_vel_x: 0.7
   min_vel_x: 0.05
   max_rotational_vel: 1.0
   min_in_place_rotational_vel: 0.4
+
+  sim_granularity: 0.05
 
   acc_lim_th: 3.2
   acc_lim_x: 2.5
