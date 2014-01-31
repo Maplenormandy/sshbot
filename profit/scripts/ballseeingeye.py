@@ -26,7 +26,8 @@ class BallSeeingEye:
     GREEN = [[49, 80, .17, .8, .1, .8]]
     #BLUE = [[100, 140,  .1, .9, .1, .9]]
     BLUE = [[110, 150,  0.0, 1.0, 0.4, 1.0]]
-    TEAL = [[80, 105,  .1, 1.0, .2, 1.0]]
+    # TEAL = [[80, 105,  .1, 1.0, .4, 1.0]] #MAC TEAL
+    TEAL = [[80, 105,  .1, 1.0, .2, 1.0]] #BOT TEAL
     PURPLE = [[130, 160,  .1, .9, .1, .9]]
     YELLOW = [[10, 40, .3,  .9, .3, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL, 'P': PURPLE}
@@ -119,7 +120,7 @@ class BallSeeingEye:
             tealWalls = self.wallsFind(hsv, frame, 'T')
             if not tealWalls == None:
                 wallsList.append(tealWalls)
-                #forbidden.append(tealWalls)
+                forbidden.append(tealWalls)
 
             # Find Purple WALLS
             purpleWalls = self.wallsFind(hsv, frame, 'P')
@@ -179,17 +180,37 @@ class BallSeeingEye:
                     # change to function when more awake
 
                     validate = True
-
+                    
+                      
                     if len(forbiddenZone) > 0:
                         for fz in forbiddenZone:
-                            m = (fz[1][1] - fz[2][1])/(fz[1][0] - fz[2][0])
-                            b = fz[1][1] - m * fz[1][0]
-                            topY = m * cx + b
-                            m = (fz[3][1] - fz[4][1])/(fz[3][0] - fz[4][0])
-                            b = fz[3][1] - m * fz[3][0]
-                            botY = m * cx + b
-                            if (cy+self.HEIGHT*0.5) > topY and (cy+self.HEIGHT*0.5) < botY:
-                                validate = False
+                            print("FZONE", fz)
+                        # Dear adventurous code reader
+                        # I commented out the code below because it sucks. forbidden zone
+                        # used to prevent any ball from being in the wall. But wall colors
+                        # are no longer the same as ball color. so now forbidden zone
+                        # just checks to see if any balls are under it
+
+                            x0, y0 = fz[1]
+                            x1, y1 = fz[2]
+                            x2, y2 = fz[3]
+                            x3, y3 = fz[4]
+                            
+                            if cx < x2 and cx > x3:
+                                avgH = (y3 - y0 + y2 - y1) / 2 # this is our reference 2 inches
+                                if avgH * 1.5/2 > r * self.HEIGHT * 2: 
+                                    validate = False
+                                elif (self.HEIGHT + cy - (y2+y3)/2) < avgH/2:
+                                    validate = False
+                                
+                            # m = (fz[1][1] - fz[2][1])/(fz[1][0] - fz[2][0])
+#                             b = fz[1][1] - m * fz[1][0]
+#                             topY = m * cx + b
+#                             m = (fz[3][1] - fz[4][1])/(fz[3][0] - fz[4][0])
+#                             b = fz[3][1] - m * fz[3][0]
+#                             botY = m * cx + b
+#                             if (cy+self.HEIGHT*0.5) > topY and (cy+self.HEIGHT*0.5) < botY:
+#                                 validate = False
 
                     if validate:
                         ballsList.append((x, y, r, thresholdImg[1]))

@@ -8,7 +8,7 @@ import rospy
 import math
 import tf
 from nav.srv import *
-from std_msgs.msg import Header, Time
+from std_msgs.msg import Header, String
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 
 class locator():
@@ -318,12 +318,10 @@ if __name__ == "__main__":
         resp = s.recv(1024)
         print resp
         if resp == '{\"GAME\": \"start\"}\n':
-            time = rospy.Time.now()
-            start_pub.publish(Time(time))
+            start_pub.publish(String("start"))
             print "Started!"
         elif resp == '{\"GAME\": \"stop\"}\n':
-            time = rospy.Time.now()
-            stop_pub.publish(Time(time))
+            stop_pub.publish(String("stop"))
             print "Ended!"
         elif resp[:8] == '{\"MAP\": ':
             mapString = resp[9:-3]

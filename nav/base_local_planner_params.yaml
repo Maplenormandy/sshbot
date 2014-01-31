@@ -4,6 +4,9 @@ TrajectoryPlannerROS:
   max_rotational_vel: 1.2
   min_in_place_rotational_vel: 0.4
 
+  xy_goal_tolerance: 0.05
+  yaw_goal_tolerance: .02
+
   sim_granularity: 0.05
 
   acc_lim_th: 3.2
@@ -11,3 +14,14 @@ TrajectoryPlannerROS:
   acc_lim_y: 2.5
 
   holonomic_robot: false
+
+#  gdist_scale: 1.0
+
+#  heading_lookahead: .5
+#  heading_scoring: true
+#  heading_scoring_timestep: .7
+ 
+
+  publish_cost_grid_pc: false
+
+  dwa: true
