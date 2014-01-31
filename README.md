@@ -20,7 +20,7 @@ First, since I accidentally updated ROS (really sorry guys!), run
 
 There may be errors with the upgrade. If there are, follow the recommended instructions. I think I had to do something along the lines of
 
-    sudo apt-get -f install
+    sudo apt-get -f installprofit 
 
 ## True Form
 
@@ -43,7 +43,7 @@ Make sure you turn on the robot at this point
 
 To start the bot without botclient
 
-    rostopic echo /start std_msgs/String 'start'
+    rostopic pub /start std_msgs/String 'start'
 
 ## Fake Bot
 

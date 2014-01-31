@@ -28,8 +28,9 @@ class BallSeeingEye:
     BLUE = [[110, 150,  0.0, 1.0, 0.4, 1.0]]
     # TEAL = [[80, 105,  .1, 1.0, .4, 1.0]] #MAC TEAL
     TEAL = [[80, 105,  .1, 1.0, .2, 1.0]] #BOT TEAL
-    PURPLE = [[130, 160,  .1, .9, .1, .9]]
-    YELLOW = [[10, 40, .3,  .9, .3, .99]]
+    
+    PURPLE = [[120, 150,  .1, .6, .1, .6]] #freshly calibrated 420
+    YELLOW = [[10, 40, .3,  .9, .5, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL, 'P': PURPLE}
     LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0), 'G':(0,0,255), 'P': (0,0,255)}
 
