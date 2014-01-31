@@ -2,6 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped
+from std_msgs.msg import String
 from sensor_state import SensorState
 from system_states import InitSystems
 from travel_states import TravelState
@@ -154,14 +155,15 @@ def waitForStart(msg, ud):
     startTime = rospy.Time.now()
     return 'valid'
 
-def waitForEnd(msg, ud):
+def waitForStop(msg, ud):
     pub = rospy.Publisher('/cmd_vel', Twist)
     pub.publish(Twist())
     return 'valid'
 
-def waitForEndTimeout(ud):
+def waitForStopTimeout(ud):
     global startTime
-    if rospy.Time.now() - startTime >= rospy.Duration(180.0):
+    if (startTime != None and
+            rospy.Time.now() - startTime >= rospy.Duration(10.0)):
         return 'valid'
 
 
@@ -240,9 +242,10 @@ def main():
     with sm_root_cc:
         Concurrence.add('SM_ROOT', sm_root)
         Concurrence.add('WAITER_STOP',
-                SensorState('/stop', String, 0.1, loopFn=waitForStart,
-                        outcomes=['valid']
-                        ),
+                SensorState('/stop', String, 0.1, loopFn=waitForStop,
+                    timeoutFn = waitForStopTimeout,
+                    outcomes=['valid']
+                    ),
                 )
 
     sm_root_cc.execute()
