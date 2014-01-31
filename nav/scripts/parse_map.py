@@ -8,7 +8,7 @@ import rospy
 import math
 import tf
 from nav.srv import *
-from std_msgs.msg import Header, String
+from std_msgs.msg import Header, Time
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 
 class locator():
@@ -304,28 +304,30 @@ def is_number(s):
 
 if __name__ == "__main__":
     rospy.init_node('locator_server')
-    start_pub = rospy.Publisher('start', String)
-    mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,N:0,3,1,4,N:1,4,2,4,S:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,O:"
+    start_pub = rospy.Publisher('start', Time)
+    stop_pub = rospy.Publisher('stop', Time)
+    mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,S:0,3,1,4,N:1,4,2,4,O:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,N:"
     print mapString
     loc = locator(mapString)
-
     s = socket.socket()         # Create a socket object
-    host = socket.gethostname() # Get local machine name
-    #host = "18.150.7.174"      # The actual server for competition
+    #host = socket.gethostname() # Get local machine name
+    host = "18.150.7.174"      # The actual server for competition
     port = 6667
     s.connect((host, port))
     while True:
         resp = s.recv(1024)
         print resp
         if resp == '{\"GAME\": \"start\"}\n':
-            start_pub.publish(String("start"))
+            time = rospy.Time.now()
+            start_pub.publish(Time(time))
             print "Started!"
-            s.close     # Close the socket when done
-            break
+        elif resp == '{\"GAME\": \"stop\"}\n':
+            time = rospy.Time.now()
+            stop_pub.publish(Time(time))
+            print "Ended!"
         elif resp[:8] == '{\"MAP\": ':
             mapString = resp[9:-3]
-            print mapString
             #loc = locator(mapString)
-            start_pub.publish(String("start"))
+            #start_pub.publish(String("start"))
     rospy.spin()
 
