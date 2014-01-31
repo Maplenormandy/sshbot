@@ -11,6 +11,8 @@ import sys
 import time
 
 class BallSeeingEye:
+    CAMERA_CUTOFF = 0.45
+    
     AREA_THRESHOLD = 70
     BLUR = 10
     DESIRED_WIDTH = 352
@@ -28,8 +30,9 @@ class BallSeeingEye:
     BLUE = [[110, 150,  0.0, 1.0, 0.4, 1.0]]
     # TEAL = [[80, 105,  .1, 1.0, .4, 1.0]] #MAC TEAL
     TEAL = [[80, 105,  .1, 1.0, .2, 1.0]] #BOT TEAL
-    PURPLE = [[130, 160,  .1, .9, .1, .9]]
-    YELLOW = [[10, 40, .3,  .9, .3, .99]]
+    
+    PURPLE = [[120, 150,  .1, .6, .1, .6]] #freshly calibrated 420
+    YELLOW = [[10, 40, .3,  .9, .5, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL, 'P': PURPLE}
     LINE_COLOURS = {'Y': (0,0,255), 'B': (0,255,0), 'R': (255,255,0), 'T': (255,0,0), 'G':(0,0,255), 'P': (0,0,255)}
 
@@ -91,7 +94,7 @@ class BallSeeingEye:
         post = frame.copy()
 
 
-        crop = post[(self.HEIGHT/2):,:]
+        crop = post[(int(self.HEIGHT * self.CAMERA_CUTOFF)):,:]
         blur = cv2.blur(crop, (self.BLUR, self.BLUR))
 
 
@@ -199,7 +202,7 @@ class BallSeeingEye:
                             if fz[0] == 'T':
                                 if cx < x2 and cx > x3:
                                     avgH = (y3 - y0 + y2 - y1) / 2 # this is our reference 2 inches
-                                    if avgH * 1.5/2 > r * self.HEIGHT * 2: 
+                                    if avgH * 1.5/2 > r * self.HEIGHT / self.CAMERA_CUTOFF: 
                                         validate = False
                                     elif (self.HEIGHT + cy - (y2+y3)/2) < avgH/2:
                                         validate = False
@@ -221,7 +224,7 @@ class BallSeeingEye:
                         ballsList.append((x, y, r, ballColour))
                         if self.debug:
                             cv2.circle(frame,
-                                (cx, cy+self.HEIGHT/2), int(r * self.HEIGHT), (0, 255, 0), 1)
+                                (cx, cy+int(self.HEIGHT * self.CAMERA_CUTOFF)), int(r * self.HEIGHT), (0, 255, 0), 1)
 
 
         return ballsList
@@ -273,10 +276,10 @@ class BallSeeingEye:
             mu, bu = self.getLine(np.array(upper), frame, self.LINE_COLOURS[colour])
             ml, bl = self.getLine(np.array(lower), frame, self.LINE_COLOURS[colour])
 
-            topLeft = (np.array(leftMost), np.array(mu * leftMost + bu + self.HEIGHT/2))
-            bottomLeft = (np.array(leftMost), np.array(ml * leftMost + bl + self.HEIGHT/2))
-            topRight = (np.array(rightMost), np.array(mu * rightMost + bu + self.HEIGHT/2))
-            bottomRight = (np.array(rightMost), np.array(ml * rightMost + bl + self.HEIGHT/2))
+            topLeft = (np.array(leftMost), np.array(mu * leftMost + bu + int(self.HEIGHT * self.CAMERA_CUTOFF)))
+            bottomLeft = (np.array(leftMost), np.array(ml * leftMost + bl + int(self.HEIGHT * self.CAMERA_CUTOFF)))
+            topRight = (np.array(rightMost), np.array(mu * rightMost + bu + int(self.HEIGHT * self.CAMERA_CUTOFF)))
+            bottomRight = (np.array(rightMost), np.array(ml * rightMost + bl + int(self.HEIGHT * self.CAMERA_CUTOFF)))
 
             # Better than a random number generator, I promise.
             confidence = max(1 - abs(mu-ml) - abs(mu)*0.5 - (300/area), 0)
@@ -322,8 +325,8 @@ class BallSeeingEye:
             b = (upperline[3]-m*upperline[2])
 
             if self.debug:
-                pt1 = (0, b + self.HEIGHT/2)
-                pt2 = (self.WIDTH,m*self.WIDTH + b + self.HEIGHT/2)
+                pt1 = (0, b + self.HEIGHT * self.CAMERA_CUTOFF)
+                pt2 = (self.WIDTH,m*self.WIDTH + b + self.HEIGHT * self.CAMERA_CUTOFF)
                 cv2.line(frame, pt1, pt2, color)
             return m[0], b[0]
         else:
