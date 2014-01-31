@@ -34,6 +34,7 @@ def main():
             ball_pos.y = -x
             ball_pos.z = r
             ball = Ball(ball_pos,color)
+            
             msg.balls.append(ball)
 
 

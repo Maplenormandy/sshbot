@@ -42,7 +42,11 @@ class BallWatcher(SensorState):
             self.seq = 0
 
         if self.failed_balls < 1:
-            if len(msg.balls)>0:
+            validBalls = []
+            for b in msg.balls:
+                if b.color != 'gp' and b.color != 'rp':
+                    validBalls.append(b)     #gp and rp are balls on the purple. We dont want these.
+            if len(validBalls)>0:
                 return 'found_balls'
 
         if self.seq % 80 == 0:
