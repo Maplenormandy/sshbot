@@ -22,19 +22,29 @@ There may be errors with the upgrade. If there are, follow the recommended instr
 
     sudo apt-get -f install
 
+## True Form
+
 To run the bot, in separate terminals run:
 
     roscore
+    rosrun profit setcams.py
     roslaunch b2b bridge.launch
-    python ~/catkin_ws/src/botclient_test_server/Python/botclient.py  #the Botclient server, which will send the mapString to parse_map.py
+    cd ~/catkin_ws/botclient_test_server/Python
+    ./botclient.py  #the Botclient server, which will send the mapString to parse_map.py
+    cd ~
     rosrun nav parse_map.py #MUST RUN FROM HOME DIRECTORY: just 'cd ~' before
-    rosrun profit ros_ballseeingeye.py
+    roslaunch profit fun.launch #Launches both the sorting and the front vision
 
 Make sure you turn on the robot at this point
 
-To start the nav stack:
-
     roslaunch nav move_base.launch
+    rosrun paralympics supersonic.py # The state machine
+
+To start the bot without botclient
+
+    rostopic echo /start std_msgs/String 'start'
+
+## Fake Bot
 
 Alternatively, to run a fake bot, run this instead:
 
@@ -43,6 +53,8 @@ Alternatively, to run a fake bot, run this instead:
     rosrun nav parse_map.py
     roslaunch nav fake.launch
     rosrun profit ros_ballseeingeye.py
+
+## Random stuff
 
 To run the whole state machine, do
 

@@ -32,7 +32,7 @@ class locator():
         parts = mapString.split(":")
         gridSize = float(parts[i])
         self.size_factor = gridSize #inches
-        
+
         i += 1
         self.startPose = self.parsePose(parts[i])
         # Send the starting position
@@ -310,8 +310,8 @@ if __name__ == "__main__":
     print mapString
     loc = locator(mapString)
     s = socket.socket()         # Create a socket object
-    #host = socket.gethostname() # Get local machine name
-    host = "18.150.7.174"      # The actual server for competition
+    host = socket.gethostname() # Get local machine name
+    #host = "18.150.7.174"      # The actual server for competition
     port = 6667
     s.connect((host, port))
     while True:

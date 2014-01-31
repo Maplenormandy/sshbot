@@ -125,7 +125,7 @@ class BallSeeingEye:
             purpleWalls = self.wallsFind(hsv, frame, 'P')
             if not purpleWalls == None:
                 wallsList.append(purpleWalls)
-                #forbidden.append(tealWalls)
+                #forbidden.append(purpleWalls)
 
             # Find BALLS
             ballsList = self.ballsFind(hsv, frame, forbidden)

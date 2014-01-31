@@ -13,6 +13,8 @@ from nav.srv import *
 from geometry_msgs.msg import Twist, PointStamped, Pose, PoseStamped, PoseWithCovarianceStamped
 
 
+startTime = None
+
 @cb_interface(
         input_keys=['target'],
         output_keys=['target_pose'],
@@ -51,8 +53,10 @@ class TheDecider(State):
         self.enemy_tries = 0
 
     def execute(self, ud):
+        global startTime
         silo_valid = self.silo_tries >= 0 and self.silo_tries < 2
         reactor_valid = map(lambda x: x>=0 and x<2, self.reactor_tries)
+        enemy_valid = self.enemy_tries >= 0 and self.enemy_tries < 2
 
         rospy.loginfo('---')
         rospy.loginfo(self.silo_tries)
@@ -62,6 +66,9 @@ class TheDecider(State):
         if (silo_valid and
                 self.silo_tries <= sum(map(abs,self.reactor_tries))):
             return 'silo'
+        elif (rospy.Time.now() - startTime < rospy.Duration(30.0)
+                and enemy_valid):
+            return 'enemy'
         else:
             minTries = min(map(abs,self.reactor_tries))
             for i in range(3):
@@ -69,7 +76,7 @@ class TheDecider(State):
                         self.reactor_tries[i]<=minTries):
                     return "reactor" + str(i+1)
 
-            if self.enemy_tries >= 0 and self.enemy_tries < 2:
+            if enemy_valid:
                 return 'enemy'
             else:
                 return 'succeeded'
@@ -144,8 +151,20 @@ class ActionPackage(Sequence):
 
 
 def waitForStart(msg, ud):
+    global startTime
+    startTime = rospy.Time.now()
     return 'valid'
 
+def waitForStop(msg, ud):
+    pub = rospy.Publisher('/cmd_vel', Twist)
+    pub.publish(Twist())
+    return 'valid'
+
+def waitForStopTimeout(ud):
+    global startTime
+    if (startTime != None and
+            rospy.Time.now() - startTime >= rospy.Duration(10.0)):
+        return 'valid'
 
 
 def main():
@@ -160,6 +179,19 @@ def main():
     sm_root.userdata.enemy = "enemy"
 
     thinker = TheDecider()
+
+    def out_cb(outmap):
+        if outmap['SM_ROOT'] != None:
+            return outmap['SM_ROOT']
+        else:
+            return 'preempted'
+
+    sm_root_cc = Concurrence(
+            outcomes=['succeeded', 'aborted', 'preempted'],
+            default_outcome='aborted',
+            child_termination_cb = lambda outmap: True,
+            outcome_cb = out_cb
+            )
 
 
     sm_silo = ActionPackage('silo', SiloState())
@@ -205,8 +237,18 @@ def main():
         sm_reactor3.hookRoot(sm_root, thinker)
         sm_enemy.hookRoot(sm_root, thinker)
 
+    sm_root_cc.userdata.msg_in = None
 
-    sm_root.execute()
+    with sm_root_cc:
+        Concurrence.add('SM_ROOT', sm_root)
+        Concurrence.add('WAITER_STOP',
+                SensorState('/stop', String, 0.1, loopFn=waitForStop,
+                    timeoutFn = waitForStopTimeout,
+                    outcomes=['valid']
+                    ),
+                )
+
+    sm_root_cc.execute()
 
 
 if __name__=='__main__':
