@@ -49,7 +49,7 @@ class TheDecider(State):
                 )
         # TODO Put back reactors 2 and 3
         self.silo_tries = 0
-        self.reactor_tries = [0, 0, -1]
+        self.reactor_tries = [0, 0, 0]
         self.enemy_tries = 0
 
     def execute(self, ud):
@@ -63,23 +63,24 @@ class TheDecider(State):
         rospy.loginfo(self.reactor_tries)
         rospy.loginfo(self.enemy_tries)
 
-        if (silo_valid and
-                self.silo_tries <= sum(map(abs,self.reactor_tries))):
-            return 'silo'
-        elif (rospy.Time.now() - startTime > rospy.Duration(150.0)
+        minTries = min(map(abs,self.reactor_tries))
+
+        if (rospy.Time.now() - startTime > rospy.Duration(150.0)
                 and enemy_valid):
             return 'enemy'
-        else:
-            minTries = min(map(abs,self.reactor_tries))
-            for i in range(3):
-                if (reactor_valid[i] and
-                        self.reactor_tries[i]<=minTries):
-                    return "reactor" + str(i+1)
 
-            if enemy_valid:
-                return 'enemy'
-            else:
-                return 'succeeded'
+        for i in (1,2,0):
+            if (reactor_valid[i] and
+                    self.reactor_tries[i]<=minTries):
+                return "reactor" + str(i+1)
+
+        elif enemy_valid:
+            return 'enemy'
+        elif (silo_valid and
+                self.silo_tries <= sum(map(abs,self.reactor_tries))):
+            return 'silo'
+        else:
+            return 'succeeded'
 
     def targetAborted(self, ud):
         if ud.target == "reactor1":
@@ -119,8 +120,9 @@ class ActionPackage(Sequence):
         self.userdata.target = name
 
         with self:
-            Sequence.add(name.upper() + '_FIND', CBState(getTargetPose))
-            Sequence.add(name.upper() + '_TRAVEL', TravelState())
+            Sequence.add(self.uname + '_FIND', CBState(getTargetPose))
+            Sequence.add(self.uname + '_TRAVEL', TravelState(),
+                    transitions={'aborted':'SM_' + self.uname})
 
             sm_disp = SiloState()
             Sequence.add(name.upper(), meat)
@@ -129,7 +131,6 @@ class ActionPackage(Sequence):
         StateMachine.add('SM_' + self.uname, self,
                 transitions={
                     'succeeded':self.uname + '_SUCCEEDED',
-                    'preempted':self.uname + '_ABORTED',
                     'aborted':self.uname + '_ABORTED'
                     }
                 )
@@ -163,7 +164,9 @@ def waitForStop(msg, ud):
 def waitForStopTimeout(ud):
     global startTime
     if (startTime != None and
-            rospy.Time.now() - startTime >= rospy.Duration(180.0)):
+            rospy.Time.now() - startTime >= rospy.Duration(175.0)):
+        pub = rospy.Publisher('/cmd_vel', Twist)
+        pub.publish(Twist())
         return 'valid'
 
 
@@ -200,17 +203,17 @@ def main():
     sm_reactor3 = ActionPackage('reactor3', ReactorState())
     sm_enemy = ActionPackage('enemy', EnemyWallState())
 
-    sm_reactor1.userdata.high_balls = 3
-    sm_reactor1.userdata.high_balls_2 = 1
-    sm_reactor1.userdata.reactor_back_dist = -0.1334
+    sm_reactor1.userdata.high_balls = 2
+    sm_reactor1.userdata.high_balls_2 = 0
+    sm_reactor1.userdata.reactor_back_dist = -0.1667
     sm_reactor1.userdata.reactor_back_speed = 0.15
-    sm_reactor2.userdata.high_balls = 3
-    sm_reactor2.userdata.high_balls_2 = 1
-    sm_reactor2.userdata.reactor_back_dist = -0.1334
+    sm_reactor2.userdata.high_balls = 2
+    sm_reactor2.userdata.high_balls_2 = 0
+    sm_reactor2.userdata.reactor_back_dist = -0.1667
     sm_reactor2.userdata.reactor_back_speed = 0.15
     sm_reactor3.userdata.high_balls = 3
     sm_reactor3.userdata.high_balls_2 = 1
-    sm_reactor3.userdata.reactor_back_dist = -0.1334
+    sm_reactor3.userdata.reactor_back_dist = -0.1667
     sm_reactor3.userdata.reactor_back_speed = 0.15
 
     sm_root.userdata.msg_in = None

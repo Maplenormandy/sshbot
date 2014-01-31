@@ -13,7 +13,7 @@ ros::Publisher* p_odom_pub;
 tf::TransformBroadcaster* p_odom_broadcaster;
 
 const double pi = boost::math::constants::pi<double>();
-const float irRange = 0.45f;
+const float irRange = 0.4f;
 const float dist_to_ir_center = 0.0513842f;
 const float dist_to_ir_center_fwd = 0.2f;
 

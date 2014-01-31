@@ -44,10 +44,15 @@ class AlignToReactor(SensorState):
         self.avgXl = avgX
         self.diffYl = diffY
 
+        self.diffYs = np.roll(self.diffYs, 1)
+        self.diffYs[0] = diffY
+
+        """
         rospy.loginfo('---')
         rospy.loginfo(avgX)
         rospy.loginfo(diffY)
         rospy.loginfo(height)
+        """
 
         vel = Twist()
 
@@ -62,7 +67,7 @@ class AlignToReactor(SensorState):
         elif not self.aligning and abs(avgX)>0.2 and not self.driving:
             self.avgX0 = avgX
             rospy.loginfo('turning away')
-            vel.angular.z = np.clip(avgX*1000.0,-0.4,0.4)
+            vel.angular.z = np.clip(avgX*1000.0,-0.6,0.6)
         else:
             if not self.driving:
                 self.avgX0 = avgX
@@ -75,9 +80,10 @@ class AlignToReactor(SensorState):
                         abs(avgX*4.0)+abs(diffY*10.0)<0.1):
                     self.driveCentering = False
                 else:
-                    vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
+                    vel.angular.z = np.clip(-self.avgX0*2.0, -0.6, 0.6)
             else:
-                vel.angular.z = np.clip(-avgX*3.5-avgXd*2.0, -0.6, 0.6)
+                rospy.loginfo(self.diffYs)
+                vel.angular.z = np.clip(-avgX*3.0-avgXd*2.0, -0.6, 0.6)
                 rospy.loginfo('driving')
                 vel.linear.x = 0.15
 
@@ -102,6 +108,7 @@ class AlignToReactor(SensorState):
         self.avgXl = 0.0
         self.diffYl = 0.0
         self.backFrames = 0
+        self.diffYs = np.array([0.0]*10)
 
         sub = rospy.Subscriber(self._topic, self._msg_type, self._msg_cb)
 
@@ -131,7 +138,10 @@ class AlignToReactor(SensorState):
                 vel = Twist()
                 vel.linear.x = 0.0
                 self._cmd_vel.publish(vel)
-                return 'succeeded'
+                if all(map(lambda x: x > 0.07, self.diffYs)):
+                    return 'realign'
+                else:
+                    return 'succeeded'
 
             if msg != None:
                 self.foundWall = True
@@ -146,14 +156,14 @@ class AlignToReactor(SensorState):
             elif not self.driving:
                 self.backFrames += 1
                 vel = Twist()
-                if self.backFrames > 60 or self.overspeed:
+                if self.backFrames > 40 or self.overspeed:
                     self._cmd_vel.publish(vel)
                     return 'aborted'
                 rospy.loginfo(self.driving)
                 rospy.loginfo('backing up')
                 self.foundWall = False
                 self.aligning = True
-                vel.linear.x = -0.05
+                vel.linear.x = -0.15
                 self._cmd_vel.publish(vel)
 
 class QueueGreenBalls(State):
@@ -199,12 +209,6 @@ class ReactorState(StateMachine):
         self.userdata.msg_in = None
 
         with self:
-            StateMachine.add('ROLLER_OFF',
-                    CBState(rollerCmd,
-                        cb_args=[self._roller_pub,0.0]
-                        ),
-                    transitions={'succeeded':'SM_HIGH'}
-                    )
             StateMachine.add('SM_HIGH', self.sm_high,
                     remapping={
                         'balls':'high_balls',
@@ -212,11 +216,14 @@ class ReactorState(StateMachine):
                     #transitions={'succeeded':'DRIVE_BACK'}
                     transitions={
                         'succeeded':'DUMP_HIGH',
-                        'realign':'DRIVE_BACK_REALIGN'
+                        'realign':'DRIVE_BACK_REALIGN',
+                        'aborted':'DRIVE_BACK_ABORTED'
                         }
                     )
             StateMachine.add('DUMP_HIGH', DumpGreenBalls(),
-                    transitions={'succeeded':'QUEUE_HIGH_EXTRA'}
+                    transitions={
+                        'succeeded':'QUEUE_HIGH_EXTRA'
+                        }
                     )
             StateMachine.add('QUEUE_HIGH_EXTRA', QueueGreenBalls(),
                     remapping={'requested':'high_balls_2'},
@@ -227,17 +234,11 @@ class ReactorState(StateMachine):
                     )
             StateMachine.add('DRIVE_BACK',
                     DriveStraight(self._cmd_vel),
-                    transitions={'succeeded':'ROLLER_ON'},
+                    transitions={'succeeded':'succeeded'},
                     remapping={
                         'goal_dist':'reactor_back_dist',
                         'goal_speed':'reactor_back_speed'
                         },
-                    )
-            StateMachine.add('ROLLER_ON',
-                    CBState(rollerCmd,
-                        cb_args=[self._roller_pub,0.5]
-                        ),
-                    transitions={'succeeded':'succeeded'}
                     )
 
             StateMachine.add('DRIVE_BACK_REALIGN',
@@ -254,8 +255,18 @@ class ReactorState(StateMachine):
                         },
                     transitions={
                         'succeeded':'DUMP_HIGH',
-                        'realign':'aborted'
+                        'realign':'DRIVE_BACK_ABORTED',
+                        'aborted':'DRIVE_BACK_ABORTED'
                         }
+                    )
+
+            StateMachine.add('DRIVE_BACK_ABORTED',
+                    DriveStraight(self._cmd_vel),
+                    transitions={'succeeded':'aborted'},
+                    remapping={
+                        'goal_dist':'reactor_back_dist',
+                        'goal_speed':'reactor_back_speed'
+                        },
                     )
 
 class AlignAndQueue(Concurrence):
@@ -306,9 +317,15 @@ class AlignToSiloBall(SensorState):
                 outcomes=['succeeded', 'preempted', 'aborted', 'realign'])
 
         self._cmd_vel = cmd_vel_pub
+        self.totalframes = 0
 
     def loop(self, msg, ud):
         vel = Twist()
+
+        self.totalframes += 1
+
+        if self.totalframes > 80:
+            return 'aborted'
 
         if self.overspeed:
             vel.linear.x = -0.15
@@ -327,14 +344,15 @@ class AlignToSiloBall(SensorState):
         rospy.loginfo(ball.point.z)
         rospy.loginfo(ball.point.y)
 
-        if abs(ball.point.y)<0.07 and abs(.15-ball.point.z)<0.007:
+        if abs(ball.point.y)<0.07:
             self._cmd_vel.publish(vel)
             return 'succeeded'
+
 
         self.radii = np.roll(self.radii, 1)
         self.radii[0] = ball.point.z
 
-        vel.linear.x = np.clip((.15-ball.point.z)*2.0,-0.08,0.08)
+        #vel.linear.x = np.clip((.15-ball.point.z)*2.0,-0.08,0.08)
         vel.angular.z = np.clip((ball.point.y)*1.0, -0.6,0.6)
 
         #self.heights = np.roll(self.heights, 1)
@@ -348,14 +366,19 @@ class AlignToSiloBall(SensorState):
         self._cmd_vel.publish(vel)
 
     def execute(self, ud):
-        vel = Twist()
-        vel.linear.x = -0.12
-        self._cmd_vel.publish(vel)
-        rospy.sleep(0.5)
-        vel.linear.x = 0.0
-        self._cmd_vel.publish(vel)
+        #vel = Twist()
+        #vel.linear.x = -0.06
+        #self._cmd_vel.publish(vel)
+        #rospy.sleep(0.5)
+        #vel.linear.x = 0.0
+        #self._cmd_vel.publish(vel)
         self.radii = np.array([.10]*5)
         return SensorState.execute(self, ud)
+
+    def timeout(self, ud):
+        self.totalframes += 1
+        if self.totalframes > 80:
+            return 'aborted'
 
 
 
@@ -404,7 +427,7 @@ class AlignToSilo(SensorState):
                 if abs(avgX+self.avgX0*0.8)<0.04:
                     self.driveCentering = False
                 else:
-                    vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
+                    vel.angular.z = np.clip(-self.avgX0*2.0, -0.6, 0.6)
             elif (height > .13 and height < .20
                     and height < np.average(self.heights)):
                 vel = Twist()
@@ -413,7 +436,7 @@ class AlignToSilo(SensorState):
             else:
                 self.heights = np.roll(self.heights, 1)
                 self.heights[0] = height
-                vel.angular.z = np.clip(-avgX*2.0, -0.4, 0.4)
+                vel.angular.z = np.clip(-avgX*2.0, -0.6, 0.6)
                 rospy.loginfo('driving')
                 vel.linear.x = np.clip(abs(height-0.20)*0.6,0.0,0.10)
 
@@ -468,14 +491,14 @@ class AlignToSilo(SensorState):
 
                 self._msg = None
                 msg = None
-            #elif not self.driving:
-            #    rospy.loginfo(self.driving)
-            #    rospy.loginfo('backing up')
-            #    self.foundWall = False
-            #    self.aligning = True
-            #    vel = Twist()
-            #    vel.linear.x = -0.05
-            #    self._cmd_vel.publish(vel)
+            elif not self.driving:
+                rospy.loginfo(self.driving)
+                rospy.loginfo('backing up')
+                self.foundWall = False
+                self.aligning = True
+                vel = Twist()
+                vel.linear.x = -0.15
+                self._cmd_vel.publish(vel)
             else:
                 return 'succeeded'
 
@@ -490,12 +513,15 @@ class GrabSiloBalls(State):
 
     def execute(self, ud):
         msg = Float32()
-        msg.data = -0.3
+        msg.data = -0.4
         self._sas_pub.publish(msg)
         rospy.sleep(1.2)
-        msg.data = 0.3
+        msg.data = 0.7
         self._sas_pub.publish(msg)
-        rospy.sleep(1.6)
+        rospy.sleep(0.7)
+        msg.data = 0.5
+        self._sas_pub.publish(msg)
+        rospy.sleep(2.0)
         msg.data = 0.0
         self._sas_pub.publish(msg)
 
@@ -564,7 +590,7 @@ class CheckSiloBalls(SensorState):
         self.lostframes = 0
         self.center = np.array([.0]*3)
 
-        if self.ballsColl < 5:
+        if self.ballsColl < 3:
             return SensorState.execute(self, ud)
         else:
             return 'invalid'
@@ -622,6 +648,7 @@ class AlignToEnemyWall(SensorState):
                 )
 
         self._cmd_vel = cmd_vel_pub
+        self.lostframes = 0
 
     def loop(self, msg, ud):
         avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
@@ -649,12 +676,18 @@ class AlignToEnemyWall(SensorState):
 
         self._cmd_vel.publish(vel)
 
+    def execute(self, ud):
+        self.lostframes = 0
+        return SensorState.execute(self, ud)
+
 
     def overspeeded(self, msg):
         self.overspeed = True
 
     def timeout(self, ud):
-        return 'aborted'
+        self.lostframes += 1
+        if self.lostframes > 16:
+            return 'aborted'
 
 class DumpRedBalls(State):
     def __init__(self):
@@ -703,14 +736,16 @@ class EnemyWallState(StateMachine):
 def main():
     rospy.init_node('docktest')
 
-    sm_dock = SiloState()
-    sm_dock.execute()
+    #sm_dock = SiloState()
+    #sm_dock.execute()
 
     #sm_dock = ReactorState()
     #sm_dock.userdata.high_balls = 3
     #sm_dock.userdata.high_balls_2 = 1
     #sm_dock.userdata.reactor_back_dist = -.1500
     #sm_dock.userdata.reactor_back_speed = 0.14
+
+    sm_dock = EnemyWallState()
 
     sm_dock.execute()
 

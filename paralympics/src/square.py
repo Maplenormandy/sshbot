@@ -27,7 +27,7 @@ class DriveStraight(SensorState):
             self.overspeedFrames += 1
             if self.overspeedFrames > 50:
                 self._cmd_vel.publish(Twist())
-                return 'aborted'
+                return 'succeeded'
 
         if self._pos0 == None:
             self._th0 = msg.twist.linear.z

@@ -42,11 +42,11 @@ class BallWatcher(SensorState):
             self.seq = 0
 
         if self.failed_balls < 1:
-            validBalls = []
-            for b in msg.balls:
-                if b.color != 'gp' and b.color != 'rp':
-                    validBalls.append(b)     #gp and rp are balls on the purple. We dont want these.
-            if len(validBalls)>0:
+            balls = filter(lambda b: len(b.color)==1, msg.balls)
+            balls = filter(lambda b: abs(b.point.x-2.0*b.point.z)>0.05,
+                    balls)
+
+            if len(balls)>0:
                 return 'found_balls'
 
         if self.seq % 80 == 0:
@@ -55,6 +55,7 @@ class BallWatcher(SensorState):
                 self.failed_balls = 0
 
     def execute(self, ud):
+        rospy.sleep(5.0)
         self.seq = 0
         return SensorState.execute(self, ud)
 
@@ -92,6 +93,10 @@ class ChaseBalls(SensorState):
         return SensorState.execute(self, ud)
 
     def loop(self, msg, ud):
+        balls = filter(lambda b: len(b.color)==1, msg.balls)
+        balls = filter(lambda b: abs(b.point.x-2.0*b.point.z)>0.05,
+                balls)
+
         walled = False
 
         self.irlock.acquire()
@@ -147,7 +152,7 @@ class ChaseBalls(SensorState):
         if not walled:
             self.lfl = 0.0
             self.lfdl = 0.0
-            if len(msg.balls)==0:
+            if len(balls)==0:
                 self.lostframes += 1
                 if self.lostframes > 16:
                     vel = Twist()
@@ -159,7 +164,7 @@ class ChaseBalls(SensorState):
                     self.vel.angular.z *= 0.3
             else:
                 self.lostframes = 0
-                ball = max(msg.balls,
+                ball = max(balls,
                         key=lambda b: b.point.y-abs(b.point.x)*0.25)
 
 
@@ -314,15 +319,15 @@ class TravelState(StateMachine):
 
 
 def main():
-    rospy.init_node('traveltest')
-    sm_travel = TravelState()
-    target_pose = PoseStamped()
-    target_pose.header.stamp = rospy.Time.now()
-    target_pose.header.frame_id = "map"
-    target_pose.pose.position.x = -0.5
-    target_pose.pose.orientation.w = 1.0
-    sm_travel.userdata.target_pose = target_pose
-    sm_travel.execute()
+    #rospy.init_node('traveltest')
+    #sm_travel = TravelState()
+    #target_pose = PoseStamped()
+    #target_pose.header.stamp = rospy.Time.now()
+    #target_pose.header.frame_id = "map"
+    #target_pose.pose.position.x = -0.5
+    #target_pose.pose.orientation.w = 1.0
+    #sm_travel.userdata.target_pose = target_pose
+    #sm_travel.execute()
 
     """
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist)

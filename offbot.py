@@ -25,8 +25,9 @@ process4 = subprocess.Popen(
 process5 = subprocess.Popen(
     shlex.split("""x-terminal-emulator -e 'bash -c "rosrun profit ros_ballseeingeye.py"'"""), stdout=subprocess.PIPE)
 
-process6 = subprocess.Popen(
-    shlex.split("""x-terminal-emulator -e 'bash -c "rosrun profit peepros.py"'"""), stdout=subprocess.PIPE)
+
+#process6 = subprocess.Popen(
+#    shlex.split("""x-terminal-emulator -e 'bash -c "rosrun profit peepros.py"'"""), stdout=subprocess.PIPE)
 
 process1.wait()
 
@@ -41,4 +42,4 @@ process1.wait()
 #python ~/catkin_ws/src/botclient_test_server/Python/botclient.py &
 #rosrun nav parse_map.py &
 #rosrun profit ros_ballseeingeye.py
-#echo "Yay it runs!" 
+#echo "Yay it runs!"
