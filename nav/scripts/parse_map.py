@@ -25,7 +25,7 @@ class locator():
         self.max_y = 0
         walls = []
         i = 0
-        self.robotRadius = 11 #in inches
+        self.robotRadius = 12.5 #in inches
         self.border = 1.0 #in meters
         self.resolution = 0.05 #in meters per pixel
 
