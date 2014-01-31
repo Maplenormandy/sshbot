@@ -13,8 +13,11 @@ process1 = subprocess.Popen(
 process2 = subprocess.Popen(
     shlex.split("""x-terminal-emulator -e 'bash -c "rosrun profit setcams.py"'"""), stdout=subprocess.PIPE)
 
+
 process3 = subprocess.Popen(
-    shlex.split("""x-terminal-emulator -e 'bash -c "botclient_test_server/Python/botclient.py"'"""), stdout=subprocess.PIPE, preexec_fn=os.setsid)
+    shlex.split("""x-terminal-emulator -e 'bash -c "~/catkin_ws/src/botclient_test_server/Python/botclient.py"'"""), stdout=subprocess.PIPE, preexec_fn=os.setsid)
+
+time.sleep(5)
 
 process4 = subprocess.Popen(
     shlex.split("""x-terminal-emulator -e 'bash -c "cd ~;rosrun nav parse_map.py"'"""), stdout=subprocess.PIPE)
