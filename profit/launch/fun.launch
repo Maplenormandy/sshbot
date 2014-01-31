@@ -1,0 +1,6 @@
+<launch>
+
+    <node pkg="profit" type="peepros.py" name="peeper" />
+    <node pkg="profit" type="ros_ballseeingeye.py" name="ballseeingeye" />
+
+</launch>

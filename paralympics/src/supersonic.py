@@ -47,7 +47,7 @@ class TheDecider(State):
                 )
         # TODO Put back reactors 2 and 3
         self.silo_tries = 0
-        self.reactor_tries = [0, -1, -1]
+        self.reactor_tries = [0, 0, -1]
         self.enemy_tries = 0
 
     def execute(self, ud):

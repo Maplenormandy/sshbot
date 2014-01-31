@@ -72,6 +72,11 @@ class DifferentialDrive
         double y;
 
         /*
+         * Odometry rate limiter
+         */
+        int odomSeq;
+
+        /*
          * Robot Parameters
          */
         // 3 7/8" diam wheels with a fudge factor

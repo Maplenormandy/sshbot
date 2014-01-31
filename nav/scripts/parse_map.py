@@ -305,9 +305,9 @@ def is_number(s):
 if __name__ == "__main__":
     rospy.init_node('locator_server')
     start_pub = rospy.Publisher('start', String)
-    #mapString = "22.00:4.00,6.00,-2.36:1.00,3.00,1.00,4.00,N:1.00,4.00,0.00,5.00,N:0.00,5.00,0.00,6.00,N:0.00,6.00,1.00,6.00,N:1.00,6.00,1.00,7.00,N:1.00,7.00,1.00,8.00,N:1.00,8.00,2.00,8.00,R:2.00,8.00,4.00,8.00,S:4.00,8.00,5.00,7.00,N:5.00,7.00,6.00,6.00,N:6.00,6.00,5.00,5.00,N:5.00,5.00,6.00,4.00,N:6.00,4.00,5.00,3.00,R:5.00,3.00,4.00,3.00,N:4.00,3.00,4.00,4.00,N:4.00,4.00,4.00,5.00,N:4.00,5.00,3.00,4.00,N:3.00,4.00,3.00,3.00,N:3.00,3.00,2.00,3.00,N:2.00,3.00,1.00,3.00,R:"
-    #print mapString
-    #loc = locator(mapString)
+    mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,N:0,3,1,4,N:1,4,2,4,S:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,O:"
+    print mapString
+    loc = locator(mapString)
 
     s = socket.socket()         # Create a socket object
     host = socket.gethostname() # Get local machine name
@@ -325,7 +325,7 @@ if __name__ == "__main__":
         elif resp[:8] == '{\"MAP\": ':
             mapString = resp[9:-3]
             print mapString
-            loc = locator(mapString)
+            #loc = locator(mapString)
             start_pub.publish(String("start"))
     rospy.spin()
 

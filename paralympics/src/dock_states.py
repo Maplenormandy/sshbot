@@ -23,14 +23,14 @@ attemptAlign = True
         outcomes=['succeeded','preempted','aborted']
         )
 def rollerCmd(ud, pub, power):
-    pub.publish(Float32(power))
+    #pub.publish(Float32(power))
     return 'succeeded'
 
 
 class AlignToReactor(SensorState):
     def __init__(self, cmd_vel_pub):
         SensorState.__init__(self, '/profit/reactor_wall_raw', Wall, 0.1,
-                outcomes=['succeeded', 'preempted', 'aborted']
+                outcomes=['succeeded', 'preempted', 'aborted', 'realign']
                 )
 
         self._cmd_vel = cmd_vel_pub
@@ -40,18 +40,20 @@ class AlignToReactor(SensorState):
         avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
         diffY = (msg.a.y - msg.d.y) - (msg.b.y - msg.c.y)
         height = (msg.d.y - msg.a.y) + (msg.c.y - msg.b.y)
+        avgXd = avgX - self.avgXl
+        self.avgXl = avgX
+        self.diffYl = diffY
 
-        """
         rospy.loginfo('---')
         rospy.loginfo(avgX)
         rospy.loginfo(diffY)
         rospy.loginfo(height)
-        """
 
         vel = Twist()
 
         if self.centering:
             rospy.loginfo('centering')
+            rospy.loginfo(diffY)
             if abs(diffY)<0.04:
                 vel.angular.z = 0.0
                 self.centering = False
@@ -68,12 +70,14 @@ class AlignToReactor(SensorState):
             rospy.loginfo(self.driving)
             if self.driveCentering:
                 rospy.loginfo('drive centering')
-                if abs(avgX+self.avgX0*0.8)<0.04:
+                rospy.loginfo(avgX)
+                if (abs(avgX+self.avgX0*0.8)<0.04 or
+                        abs(avgX*4.0)+abs(diffY*10.0)<0.1):
                     self.driveCentering = False
                 else:
                     vel.angular.z = np.clip(-self.avgX0*2.0, -0.4, 0.4)
             else:
-                vel.angular.z = np.clip(-avgX*4.0, -0.6, 0.6)
+                vel.angular.z = np.clip(-avgX*3.5-avgXd*2.0, -0.6, 0.6)
                 rospy.loginfo('driving')
                 vel.linear.x = 0.15
 
@@ -92,9 +96,12 @@ class AlignToReactor(SensorState):
         self.driveCentering = True
         self.driving = False
         self.overspeed = False
-        self.avgXi = 0.0
+        self.avgX0 = 0.0
         self.aligning = False
         self.centering = True
+        self.avgXl = 0.0
+        self.diffYl = 0.0
+        self.backFrames = 0
 
         sub = rospy.Subscriber(self._topic, self._msg_type, self._msg_cb)
 
@@ -137,11 +144,15 @@ class AlignToReactor(SensorState):
                 self._msg = None
                 msg = None
             elif not self.driving:
+                self.backFrames += 1
+                vel = Twist()
+                if self.backFrames > 60 or self.overspeed:
+                    self._cmd_vel.publish(vel)
+                    return 'aborted'
                 rospy.loginfo(self.driving)
                 rospy.loginfo('backing up')
                 self.foundWall = False
                 self.aligning = True
-                vel = Twist()
                 vel.linear.x = -0.05
                 self._cmd_vel.publish(vel)
 
@@ -198,7 +209,11 @@ class ReactorState(StateMachine):
                     remapping={
                         'balls':'high_balls',
                         },
-                    transitions={'succeeded':'DUMP_HIGH'}
+                    #transitions={'succeeded':'DRIVE_BACK'}
+                    transitions={
+                        'succeeded':'DUMP_HIGH',
+                        'realign':'DRIVE_BACK_REALIGN'
+                        }
                     )
             StateMachine.add('DUMP_HIGH', DumpGreenBalls(),
                     transitions={'succeeded':'QUEUE_HIGH_EXTRA'}
@@ -225,12 +240,30 @@ class ReactorState(StateMachine):
                     transitions={'succeeded':'succeeded'}
                     )
 
+            StateMachine.add('DRIVE_BACK_REALIGN',
+                    DriveStraight(self._cmd_vel),
+                    transitions={'succeeded':'SM_HIGH_REALIGN'},
+                    remapping={
+                        'goal_dist':'reactor_back_dist',
+                        'goal_speed':'reactor_back_speed'
+                        },
+                    )
+            StateMachine.add('SM_HIGH_REALIGN', self.sm_high,
+                    remapping={
+                        'balls':'high_balls',
+                        },
+                    transitions={
+                        'succeeded':'DUMP_HIGH',
+                        'realign':'aborted'
+                        }
+                    )
+
 class AlignAndQueue(Concurrence):
     def __init__(self, cmd_vel_pub):
         Concurrence.__init__(self,
                 input_keys=['balls'],
                 output_keys=['queued'],
-                outcomes=['succeeded', 'preempted', 'aborted'],
+                outcomes=['succeeded', 'preempted', 'aborted', 'realign'],
                 default_outcome='aborted',
                 child_termination_cb = self.child_termination_cb,
                 outcome_cb = self.outcome_cb
@@ -251,6 +284,8 @@ class AlignAndQueue(Concurrence):
             return True
         elif any(map(lambda x: x=='aborted' or x=='preempted', outmap.values())):
             return True
+        elif any(map(lambda x: x=='realign', outmap.values())):
+            return True
         else:
             return False
 
@@ -259,6 +294,8 @@ class AlignAndQueue(Concurrence):
             return 'succeeded'
         elif any(map(lambda x: x=='preempted', outmap.values())):
             return 'preempted'
+        elif any(map(lambda x: x=='realign', outmap.values())):
+            return 'realign'
         else:
             return 'aborted'
 
@@ -269,12 +306,6 @@ class AlignToSiloBall(SensorState):
                 outcomes=['succeeded', 'preempted', 'aborted', 'realign'])
 
         self._cmd_vel = cmd_vel_pub
-        rospy.Subscriber('/overspeed', Empty, self.overspeeded)
-        self.overspeed = False
-
-    def overspeeded(self, msg):
-        self.overspeed = True
-        rospy.loginfo('overspeed')
 
     def loop(self, msg, ud):
         vel = Twist()
@@ -323,7 +354,6 @@ class AlignToSiloBall(SensorState):
         rospy.sleep(0.5)
         vel.linear.x = 0.0
         self._cmd_vel.publish(vel)
-        self.overspeed = False
         self.radii = np.array([.10]*5)
         return SensorState.execute(self, ud)
 
@@ -542,12 +572,15 @@ class CheckSiloBalls(SensorState):
 class SiloState(StateMachine):
     def __init__(self):
         StateMachine.__init__(self,
-                outcomes=['succeeded', 'preempted', 'aborted'])
+                outcomes=['succeeded', 'preempted', 'aborted']
+                )
 
         sas_pub = rospy.Publisher('/sas_cmd', Float32)
         cmd_vel = rospy.Publisher('/cmd_vel', Twist)
 
         self.userdata.msg_in = None
+        self.userdata.silo_back_dist = -.1500
+        self.userdata.silo_back_speed = .15
 
         with self:
             StateMachine.add('ALIGN_SILO', AlignToSilo(cmd_vel),
@@ -562,10 +595,18 @@ class SiloState(StateMachine):
                     transitions={
                         'valid':'GRAB_SILO',
                         'realign':'ALIGN_SILO_BALL',
-                        'invalid':'succeeded'})
+                        'invalid':'DRIVE_BACK'})
             StateMachine.add('GRAB_SILO', GrabSiloBalls(sas_pub),
                     transitions={'succeeded':'CHECK_SILO',
                         'aborted':'ALIGN_SILO'}
+                    )
+            StateMachine.add('DRIVE_BACK',
+                    DriveStraight(cmd_vel),
+                    transitions={'succeeded':'succeeded'},
+                    remapping={
+                        'goal_dist':'silo_back_dist',
+                        'goal_speed':'silo_back_speed'
+                        },
                     )
 
 
@@ -581,13 +622,17 @@ class AlignToEnemyWall(SensorState):
                 )
 
         self._cmd_vel = cmd_vel_pub
-        rospy.Subscriber('/overspeed', Empty, self.overspeeded)
-        self.overspeed = False
 
     def loop(self, msg, ud):
         avgX = (msg.a.x + msg.b.x + msg.c.x + msg.d.x)/4.0
         diffY = (msg.a.y - msg.d.y) - (msg.b.y - msg.c.y)
         height = (msg.d.y - msg.a.y) + (msg.c.y - msg.b.y)
+
+        if self.overspeed:
+            vel = Twist()
+            vel.linear.x = 0.0
+            self._cmd_vel.publish(vel)
+            return 'succeeded'
 
         """
         rospy.loginfo('---')
@@ -608,53 +653,8 @@ class AlignToEnemyWall(SensorState):
     def overspeeded(self, msg):
         self.overspeed = True
 
-
-    def execute(self, ud):
-        global attemptAlign
-        if not attemptAlign:
-            return 'succeeded'
-
-        sub = rospy.Subscriber(self._topic, self._msg_type, self._msg_cb)
-
-        msg = ud.msg_in
-
-        while True:
-            if self.preempt_requested():
-                self.service_preempt()
-                sub.unregister()
-                ud.msg_out = msg
-                return 'preempted'
-            self.overspeed = False
-
-            if msg == None:
-                self._trigger_cond.acquire()
-                self._trigger_cond.wait(self._timeout)
-                self._trigger_cond.release()
-
-                msg = self._msg
-
-            if self.overspeed:
-                for i in range(0):
-                    vel = Twist()
-                    rospy.loginfo('running')
-                    rospy.sleep(0.5)
-                    i += 1
-
-                vel = Twist()
-                vel.linear.x = 0.0
-                self._cmd_vel.publish(vel)
-                return 'succeeded'
-
-            if msg != None:
-                self.foundWall = True
-                ret = self.loop(msg, ud)
-                if ret:
-                    sub.unregister()
-                    ud.msg_out = msg
-                    return ret
-
-                self._msg = None
-                msg = None
+    def timeout(self, ud):
+        return 'aborted'
 
 class DumpRedBalls(State):
     def __init__(self):
@@ -704,6 +704,14 @@ def main():
     rospy.init_node('docktest')
 
     sm_dock = SiloState()
+    sm_dock.execute()
+
+    #sm_dock = ReactorState()
+    #sm_dock.userdata.high_balls = 3
+    #sm_dock.userdata.high_balls_2 = 1
+    #sm_dock.userdata.reactor_back_dist = -.1500
+    #sm_dock.userdata.reactor_back_speed = 0.14
+
     sm_dock.execute()
 
 

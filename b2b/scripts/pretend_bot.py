@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('b2b')
 import rospy
-from geometry_msgs.msg import Twist, TwistStamped, PointStamped
+from geometry_msgs.msg import Twist, TwistStamped, PointStamped, Int16
 from std_msgs.msg import Empty
 from b2b.msg import IRStamped
 import math
@@ -21,9 +21,9 @@ def reset_odom(msg):
 def main():
     global op
     rospy.init_node('pretend_bot')
-    r = rospy.Rate(33)
+    r = rospy.Rate(60)
     rospy.Subscriber('/cmd_vel', Twist, cmd_vel_cb)
-    rospy.Subscriber('/odom_reset', Empty, reset_odom)
+    rospy.Subscriber('/odom_reset', Int16, reset_odom)
     pub = rospy.Publisher('/odom_partial', TwistStamped)
     pub2 = rospy.Publisher('/ir_raw', IRStamped)
 
@@ -52,7 +52,8 @@ def main():
         op.twist.angular.y += op.twist.linear.x*math.sin(op.twist.linear.z) / 120.0
 
         pub.publish(op)
-        pub2.publish(irs)
+        if frame%3 == 0:
+            pub2.publish(irs)
 
         frame += 1
 

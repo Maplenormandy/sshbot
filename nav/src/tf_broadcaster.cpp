@@ -3,6 +3,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <cmath>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Int16.h>
 #include <boost/math/constants/constants.hpp>
 
 const double pi = boost::math::constants::pi<double>();
@@ -49,9 +50,9 @@ int main(int argc, char** argv){
 
     tf::TransformBroadcaster odom_broadcaster;
 
-    std_msgs::Empty resetMsg;
+    std_msgs::Int16 resetMsg;
     ros::Publisher resetPub =
-        n.advertise<std_msgs::Empty>("/odom_reset", 15, true);
+        n.advertise<std_msgs::Int16>("/odom_reset", 15, true);
     resetPub.publish(resetMsg);
 
     ros::Rate r(20.0);

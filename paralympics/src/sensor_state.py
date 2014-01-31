@@ -4,6 +4,8 @@ import rospy
 import threading
 import traceback
 
+from std_msgs.msg import Empty
+
 from smach import *
 
 __all__ = ['SensorState']
@@ -27,12 +29,17 @@ class SensorState(State):
         self._topic = topic
         self._msg_type = msg_type
         self._msg = None
+        self.overspeed = False
 
+    def overspeeded(self, msg):
+        self.overspeed = True
 
     def execute(self, ud):
         sub = rospy.Subscriber(self._topic, self._msg_type, self._msg_cb)
+        ossub = rospy.Subscriber('/overspeed', Empty, self.overspeeded)
 
         msg = ud.msg_in
+        self.overspeed = False
 
         while True:
             if self.preempt_requested():

@@ -45,6 +45,8 @@ void DifferentialDrive::reset(void)
     lowpass = 0.7;
     int_sat = 70000.0/kp;
 
+    odomSeq = 0;
+
     yl = 0;
     yr = 0;
     yil = 0;
@@ -147,7 +149,16 @@ void DifferentialDrive::loop(void)
     //pwmWrite(MOTOR_R_PWM, (uint16) abs(cmd_vel_msg.linear.y));
     //pwmWrite(MOTOR_L_PWM, (uint16) (micros()%65536));
     //pwmWrite(MOTOR_R_PWM, (uint16) (micros()%65536));
+    
+    ++odomSeq;
 
-    odom.publish(&odom_msg);
+    if (odomSeq%2==0)
+    {
+        odom.publish(&odom_msg);
+    }
+    else
+    {
+        odom_msg.header.seq -= 1;
+    }
 }
 

@@ -46,10 +46,9 @@ class BallWatcher(SensorState):
                 return 'found_balls'
 
         if self.seq % 80 == 0:
-            pass
-            #self.failed_balls -= 1
-            #if self.failed_balls < 0:
-                #self.failed_balls = 0
+            self.failed_balls -= 1
+            if self.failed_balls < 0:
+                self.failed_balls = 0
 
     def execute(self, ud):
         self.seq = 0
@@ -67,7 +66,7 @@ class ChaseBalls(SensorState):
         self.watcher = watcher
         rospy.Subscriber('/overspeed', Empty, self.overspeeded)
         self.overspeed = False
-        
+
     def overspeeded(self, msg):
         self.overspeed = True
 
@@ -97,7 +96,7 @@ class ChaseBalls(SensorState):
 
         vel = Twist()
         self.chaseframes += 1
-        
+
         if self.overspeed:
             self.watcher.failed_balls += 1
             vel.linear.x = -0.1;

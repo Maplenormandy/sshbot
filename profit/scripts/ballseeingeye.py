@@ -25,8 +25,8 @@ class BallSeeingEye:
            [170, 180, .3, .73, .3, .9]]
     GREEN = [[49, 80, .17, .8, .1, .8]]
     #BLUE = [[100, 140,  .1, .9, .1, .9]]
-    BLUE = [[95, 150,  0.0, 1.0, 0.4, 1.0]]
-    TEAL = [[80, 95,  .1, .9, .2, .9]]
+    BLUE = [[110, 150,  0.0, 1.0, 0.4, 1.0]]
+    TEAL = [[80, 105,  .1, 1.0, .2, 1.0]]
     PURPLE = [[130, 160,  .1, .9, .1, .9]]
     YELLOW = [[10, 40, .3,  .9, .3, .99]]
     COLOURS = {'R': RED, 'G': GREEN, 'B': BLUE, 'Y': YELLOW, 'T': TEAL, 'P': PURPLE}
@@ -46,12 +46,12 @@ class BallSeeingEye:
             print('camera ' + str(camera-2))
             self.cap = cv2.VideoCapture(camera-2)
         print("Setting up camera feed...")
-        time.sleep(1)
+        time.sleep(0.5)
 
         self.cap.set(3,self.DESIRED_WIDTH)
         self.cap.set(4,self.DESIRED_HEIGHT)
         print("Configuring size...")
-        time.sleep(1)
+        time.sleep(0.5)
 
         self.WIDTH = int(self.cap.get(3))
         self.HEIGHT = int(self.cap.get(4))

@@ -2,6 +2,7 @@
 import roslib; roslib.load_manifest('paralympics')
 import rospy
 from geometry_msgs.msg import Twist, TwistStamped
+from std_msgs.msg import Empty
 import math
 import numpy as np
 from sensor_state import SensorState
@@ -19,8 +20,15 @@ class DriveStraight(SensorState):
         self._pos0 = None
         self._th0 = None
         self._unit = None
+        self.overspeedFrames = 0
 
     def loop(self, msg, ud):
+        if self.overspeed:
+            self.overspeedFrames += 1
+            if self.overspeedFrames > 50:
+                self._cmd_vel.publish(Twist())
+                return 'aborted'
+
         if self._pos0 == None:
             self._th0 = msg.twist.linear.z
             self._pos0 = np.array([msg.twist.angular.x, msg.twist.angular.y])
@@ -43,6 +51,11 @@ class DriveStraight(SensorState):
             vel.angular.z = np.clip((self._th0 - msg.twist.linear.z)/40.0,
                     -ud.goal_speed/2.0, ud.goal_speed/2.0)
             self._cmd_vel.publish(vel)
+
+    def execute(self, ud):
+        self.overspeedFrames = 0
+        self.overspeed = False
+        return SensorState.execute(self, ud)
 
 class TurnInPlace(SensorState):
     def __init__(self, cmd_vel_pub):

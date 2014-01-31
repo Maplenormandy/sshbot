@@ -24,11 +24,11 @@ ros::Publisher sas_voltage("/sas_volts", &sas_v_msg);
 DifferentialDrive dd;
 IRSuite irs;
 
-void odom_reset_cb(const std_msgs::Empty& msg)
+void odom_reset_cb(const std_msgs::Int16& msg)
 {
     dd.reset();
 }
-ros::Subscriber<std_msgs::Empty> odom_reset("odom_reset", &odom_reset_cb);
+ros::Subscriber<std_msgs::Int16> odom_reset("odom_reset", &odom_reset_cb);
 
 void sas_cmd_cb(const std_msgs::Float32& msg)
 {
@@ -125,7 +125,7 @@ void setup()
     pac.attach(PAC_SERVO);
     pac.write(70);
     gate_g.attach(GATE_G_SERVO);
-    gate_g.write(15);
+    gate_g.write(90);
     gate_r.attach(GATE_R_SERVO);
     gate_r.write(90);
 
