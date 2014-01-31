@@ -42,6 +42,7 @@ class BotProtocol(basic.LineReceiver):
         #print "started"
 
 
+
     def connectionLost(self, reason):
         self.factory.removeConnection(self)
 

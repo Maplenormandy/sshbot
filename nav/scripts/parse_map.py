@@ -7,14 +7,23 @@ import pygame
 import rospy
 import math
 import tf
+import time
+from time import sleep
 from nav.srv import *
 from std_msgs.msg import Header, String
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
+from nav_msgs.msg import OccupancyGrid, MapMetaData
+from nav_msgs.srv import GetMap
+
+token = "14GHK83Vk6"
 
 class locator():
     def __init__(self, mapString):
         self.srv = rospy.Service('locator', Locator, self.handle_locator)
+        self.srv = rospy.Service('static_map', Locator, self.handle_map)
+
         self.poser = rospy.Publisher('initialpose', PoseWithCovarianceStamped, latch=True)
+        self.mapPub = rospy.Publisher('map', OccupancyGrid, latch=True)
         self.parseMap(mapString)
 
     def parseMap(self, mapString):
@@ -109,8 +118,30 @@ class locator():
 
         self.correctPoses(window)
         #window = self.displayPoses(window)
-        window = pygame.transform.flip(window, False, True)
+        #window = pygame.transform.flip(window, False, True)
 
+        self.occ = OccupancyGrid()
+        self.occ.header.stamp = rospy.Time.now()
+        self.occ.header.frame_id = "map"
+        
+        self.occ.info.map_load_time = self.occ.header.stamp 
+        self.occ.info.resolution = self.resolution
+        self.occ.info.width = self.max_x_actual
+        self.occ.info.height = self.max_y_actual
+        self.occ.info.origin.orientation.w = 1
+
+        self.occ.data = []
+        for j in range(self.max_y_actual):
+            for i in range(self.max_x_actual):
+                if window.get_at((i, j)) == (255, 255, 255):
+                    self.occ.data.append(0)
+                else:
+                    self.occ.data.append(100)
+
+        print self.occ.data
+        self.mapPub.publish(self.occ)
+        
+        """
         pygame.image.save(window, "catkin_ws/src/nav/map/map.png")
 
         f = open('catkin_ws/src/nav/map/map.yaml','w')
@@ -136,7 +167,7 @@ class locator():
         f.write('negate: 0')
         f.close()
 
-
+        """
 
     def flood_fill(self, image, x, y):#x, y values are in inches
         x = int(round(x*0.0254/self.resolution))
@@ -216,6 +247,14 @@ class locator():
         color = parts[4]
         return ((x1, y1), (x2, y2), color)
 
+
+    def handle_map(self, req):
+        resp = GetMap()
+        try:
+            resp.map = self.occ
+        except:
+            rospy.loginfo('Error with opponent')
+        return resp
 
 
     def handle_locator(self, req):
@@ -301,31 +340,61 @@ def is_number(s):
     except ValueError:
         return False
 
+def bcstr(token, field, title, value):
+    return "{\"token\":\""+token+"\",\""+field+"\":[\""+title+"\",\""+value+"\"]}done\n"
+
+
 
 if __name__ == "__main__":
     rospy.init_node('locator_server')
     start_pub = rospy.Publisher('start', String)
     stop_pub = rospy.Publisher('stop', String)
-    mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,S:0,3,1,4,N:1,4,2,4,O:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,N:"
-    print mapString
-    loc = locator(mapString)
-    s = socket.socket()         # Create a socket object
-    host = socket.gethostname() # Get local machine name
-    #host = "18.150.7.174"      # The actual server for competition
+
+#    mapString = "22.00:4.00,6.00,-2.36:1.00,3.00,1.00,4.00,N:1.00,4.00,0.00,5.00,N:0.00,5.00,0.00,6.00,N:0.00,6.00,1.00,6.00,N:1.00,6.00,1.00,7.00,N:1.00,7.00,1.00,8.00,N:1.00,8.00,2.00,8.00,R:2.00,8.00,4.00,8.00,S:4.00,8.00,5.00,7.00,N:5.00,7.00,6.00,6.00,N:6.00,6.00,5.00,5.00,N:5.00,5.00,6.00,4.00,N:6.00,4.00,5.00,3.00,R:5.00,3.00,4.00,3.00,N:4.00,3.00,4.00,4.00,N:4.00,4.00,4.00,5.00,N:4.00,5.00,3.00,4.00,N:3.00,4.00,3.00,3.00,N:3.00,3.00,2.00,3.00,N:2.00,3.00,1.00,3.00,R:"
+#    loc = locator(mapString)
+#    rospy.spin()
+
+
+    s = socket.socket()             # Create a socket object
+    #host = socket.gethostname()     # Get local machine name
+    host = "18.150.7.174"           # The actual server for competition
     port = 6667
     s.connect((host, port))
-    while True:
+    print "CONNECTED\n"
+
+    gamestarted = False
+    while not gamestarted:
+        s.send("game\n")
+        time.sleep(.001)
         resp = s.recv(1024)
-        print resp
-        if resp == '{\"GAME\": \"start\"}\n':
-            start_pub.publish(String("start"))
-            print "Started!"
-        elif resp == '{\"GAME\": \"stop\"}\n':
+        #print "'"+resp+"'"
+        if resp[:16] == '{\"GAME\":\"start\"}':
+            gamestarted = True
+    map_unsent = True
+    mapString = ""
+    while map_unsent:
+        s.send(bcstr(token,"MAP","junk","junk"))
+        time.sleep(.01)
+        mapString = s.recv(1024).strip()
+        if mapString[:7] == '{"MAP":':
+            map_unsent = False
+            print "got it"
+    print mapString
+    mapString = mapString[8:-2]
+
+    loc = locator(mapString)
+    start_pub.publish(String("start"))
+    
+    print "Started!"
+    
+    while gamestarted:
+        s.send("game\n")
+        time.sleep(.001)
+        resp = s.recv(1024)
+        if resp[:15] == '{\"GAME\":\"stop\"}':
+            gamestarted = False
             stop_pub.publish(String("stop"))
-            print "Ended!"
-        elif resp[:8] == '{\"MAP\": ':
-            mapString = resp[9:-3]
-            #loc = locator(mapString)
-            #start_pub.publish(String("start"))
     rospy.spin()
+
+
 
