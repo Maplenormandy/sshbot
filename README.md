@@ -29,11 +29,12 @@ To run the bot, in separate terminals run:
     roscore
     rosrun profit setcams.py
     roslaunch b2b bridge.launch
-    cd ~/catkin_ws/botclient_test_server/Python
+    cd ~/catkin_ws/src/botclient_test_server/Python
     ./botclient.py  #the Botclient server, which will send the mapString to parse_map.py
     cd ~
     rosrun nav parse_map.py #MUST RUN FROM HOME DIRECTORY: just 'cd ~' before
-    roslaunch profit fun.launch #Launches both the sorting and the front vision
+    rosrun profit ros_ballseeingeye.py
+    rosrun profit peepros.py # Note that the vision code must not be launched together
 
 Make sure you turn on the robot at this point
 

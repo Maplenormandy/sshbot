@@ -304,8 +304,8 @@ def is_number(s):
 
 if __name__ == "__main__":
     rospy.init_node('locator_server')
-    start_pub = rospy.Publisher('start', Time)
-    stop_pub = rospy.Publisher('stop', Time)
+    start_pub = rospy.Publisher('start', String)
+    stop_pub = rospy.Publisher('stop', String)
     mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,S:0,3,1,4,N:1,4,2,4,O:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,N:"
     print mapString
     loc = locator(mapString)
