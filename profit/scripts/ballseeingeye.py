@@ -126,7 +126,7 @@ class BallSeeingEye:
             purpleWalls = self.wallsFind(hsv, frame, 'P')
             if not purpleWalls == None:
                 wallsList.append(purpleWalls)
-                #forbidden.append(purpleWalls)
+                forbidden.append(purpleWalls)
 
             # Find BALLS
             ballsList = self.ballsFind(hsv, frame, forbidden)
@@ -175,7 +175,7 @@ class BallSeeingEye:
                     x = (cx-self.WIDTH/2.0) / self.HEIGHT
                     y = (cy*1.0) / self.HEIGHT
                     r = (area / 3.14)**0.5 / self.HEIGHT
-
+                    ballColour = thresholdImg[1]
                     # fitline - check if dot is in forbidden zone (a wall)
                     # change to function when more awake
 
@@ -196,12 +196,17 @@ class BallSeeingEye:
                             x2, y2 = fz[3]
                             x3, y3 = fz[4]
                             
-                            if cx < x2 and cx > x3:
-                                avgH = (y3 - y0 + y2 - y1) / 2 # this is our reference 2 inches
-                                if avgH * 1.5/2 > r * self.HEIGHT * 2: 
-                                    validate = False
-                                elif (self.HEIGHT + cy - (y2+y3)/2) < avgH/2:
-                                    validate = False
+                            if fz[0] == 'T':
+                                if cx < x2 and cx > x3:
+                                    avgH = (y3 - y0 + y2 - y1) / 2 # this is our reference 2 inches
+                                    if avgH * 1.5/2 > r * self.HEIGHT * 2: 
+                                        validate = False
+                                    elif (self.HEIGHT + cy - (y2+y3)/2) < avgH/2:
+                                        validate = False
+                            if fz[0] == 'P':
+                                if cx < x2 and cx > x3:
+                                    if cy < (y0 + y1)/2:
+                                        ballColour = ballColour + 'p'
                                 
                             # m = (fz[1][1] - fz[2][1])/(fz[1][0] - fz[2][0])
 #                             b = fz[1][1] - m * fz[1][0]
@@ -213,7 +218,7 @@ class BallSeeingEye:
 #                                 validate = False
 
                     if validate:
-                        ballsList.append((x, y, r, thresholdImg[1]))
+                        ballsList.append((x, y, r, ballColour))
                         if self.debug:
                             cv2.circle(frame,
                                 (cx, cy+self.HEIGHT/2), int(r * self.HEIGHT), (0, 255, 0), 1)
