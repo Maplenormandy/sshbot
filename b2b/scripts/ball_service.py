@@ -16,6 +16,7 @@ class BallHandler():
 
         self.roller_pub = rospy.Publisher('/roller_cmd', Float32)
         #self.roller_pub.publish(Float32(data=0.5), latch=True)
+        self.ball_reset = rospy.Subscriber('/start', String, self.resetBalls)
 
         self.pac_pub = rospy.Publisher('/pac_cmd', Int16)
         self.gate_g_pub = rospy.Publisher('/gate_g_cmd', Int16)
@@ -25,6 +26,9 @@ class BallHandler():
         self.ball_lock = threading.RLock()
         self.ball_srv = rospy.Service('green_ball_server', GreenBallService, self.greenBallSrv)
         self.ball_dump = rospy.Service('ball_dump', BallDump, self.ballDump)
+
+    def resetBalls(self, msg):
+        self.green_queued = 0
 
     def ballDump(self, req):
         rospy.loginfo('dumping ' + req.color)
