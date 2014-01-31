@@ -7,9 +7,12 @@ import pygame
 import rospy
 import math
 import tf
+from time import sleep
 from nav.srv import *
 from std_msgs.msg import Header, String
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
+
+token = "14GHK83Vk6"
 
 class locator():
     def __init__(self, mapString):
@@ -301,31 +304,42 @@ def is_number(s):
     except ValueError:
         return False
 
+def bcstr(token, field, title, value):
+    return "{\"token\":\""+token+"\",\""+field+"\":[\""+title+"\",\""+value+"\"]}done\n"
+
+
 
 if __name__ == "__main__":
     rospy.init_node('locator_server')
     start_pub = rospy.Publisher('start', String)
-    stop_pub = rospy.Publisher('stop', String)
-    mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,S:0,3,1,4,N:1,4,2,4,O:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,N:"
-    print mapString
-    loc = locator(mapString)
-    s = socket.socket()         # Create a socket object
-    host = socket.gethostname() # Get local machine name
-    #host = "18.150.7.174"      # The actual server for competition
+#    stop_pub = rospy.Publisher('stop', String)
+#    mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,S:0,3,1,4,N:1,4,2,4,O:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,N:"
+#    print mapString
+#    loc = locator(mapString)
+
+    s = socket.socket()             # Create a socket object
+    #host = socket.gethostname()     # Get local machine name
+    host = "18.150.7.174"           # The actual server for competition
     port = 6667
     s.connect((host, port))
-    while True:
-        resp = s.recv(1024)
-        print resp
-        if resp == '{\"GAME\": \"start\"}\n':
-            start_pub.publish(String("start"))
-            print "Started!"
-        elif resp == '{\"GAME\": \"stop\"}\n':
-            stop_pub.publish(String("stop"))
-            print "Ended!"
-        elif resp[:8] == '{\"MAP\": ':
-            mapString = resp[9:-3]
-            #loc = locator(mapString)
-            #start_pub.publish(String("start"))
-    rospy.spin()
+    print "CONNECTED\n"
 
+    gamestarted = False
+    while not gamestarted:
+        s.send("game\n")
+        resp = s.recv(30)
+        print "'"+resp+"'"
+        if resp[:16] == '{\"GAME\":\"start\"}':
+            #print "Started!"
+            gamestarted = True
+    s.send(bcstr(token,"MAP","junk","junk"))
+    mapString = s.recv(1024).strip()
+    print mapString
+    mapString = mapString[8:-2]
+    print mapString
+    #mapString = "22.0:1.0,1.0,0:1,0,0,1,R:0,1,0,3,S:0,3,1,4,N:1,4,2,4,O:2,4,3,3,N:3,3,3,2,R:3,3,3,2,R:3,2,3,0,N:3,0,1,0,N:"
+    #mapString = "2.0:4.5,5.5,3.14159:0,0,0,1,N:0,1,1,2,O:1,2,1,3,O:1,3,0,4,O:0,4,0,6,S:0,6,3,6,N:3,6,4,6,R:4,6,7,6,N:7,6,7,1,N:7,1,6,0,N:6,0,5,0,R:5,0,3,0,N:3,0,2,1,N:2,1,1,0,N:1,0,0,0,R:4,0,4,5,N:4,5,5,5,N:4,1,3,2,N:3,2,2,2,N:2,2,2,3,N:2,3,4,3,N:5,1,5,3,N:5,3,6,3,N:6,3,6,2,N:6,2,5,1,N:"
+    loc = locator(mapString)
+    start_pub.publish(String("start"))
+    print "Started!"
+    rospy.spin()
