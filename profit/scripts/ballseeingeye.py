@@ -187,7 +187,8 @@ class BallSeeingEye:
                       
                     if len(forbiddenZone) > 0:
                         for fz in forbiddenZone:
-                            print("FZONE", fz)
+                            if self.debug:
+                                print("FZONE", fz)
                         # Dear adventurous code reader
                         # I commented out the code below because it sucks. forbidden zone
                         # used to prevent any ball from being in the wall. But wall colors
