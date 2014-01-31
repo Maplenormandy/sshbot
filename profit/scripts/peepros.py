@@ -23,7 +23,7 @@ class Peepros:
 # self.screw_ind += 1
 
         if self.ks == 'WAITING_FOR_RED':
-            self.screw_cmd.publish(Float32(data=-0.3))
+            self.screw_cmd.publish(Float32(data=-0.5))
             self.kick_cmd.publish(Int16(data=180))
             if colour == 'R':
                 rospy.loginfo("I SEE A RED PLEASE KICK")
@@ -38,7 +38,7 @@ class Peepros:
             if self.timer > 10:
                 self.ks = 'WAITING_FOR_RED'
             elif self.timer > 6:
-                self.screw_cmd.publish(Float32(data=-0.3))
+                self.screw_cmd.publish(Float32(data=-0.5))
                 self.kick_cmd.publish(Int16(data=180))
             elif self.timer > 3:
                 self.screw_cmd.publish(Float32(data=-0))
