@@ -13,14 +13,14 @@ from nav.srv import *
 from std_msgs.msg import Header, String
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 from nav_msgs.msg import OccupancyGrid, MapMetaData
-from nav_msgs.srv import GetMap
+from nav_msgs.srv import *
 
 token = "14GHK83Vk6"
 
 class locator():
     def __init__(self, mapString):
         self.srv = rospy.Service('locator', Locator, self.handle_locator)
-        self.srv = rospy.Service('static_map', Locator, self.handle_map)
+        self.srv = rospy.Service('static_map', GetMap, self.handle_map)
 
         self.poser = rospy.Publisher('initialpose', PoseWithCovarianceStamped, latch=True)
         self.mapPub = rospy.Publisher('map', OccupancyGrid, latch=True)
@@ -249,7 +249,7 @@ class locator():
 
 
     def handle_map(self, req):
-        resp = GetMap()
+        resp = GetMapResponse()
         try:
             resp.map = self.occ
         except:
