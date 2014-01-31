@@ -91,6 +91,8 @@ def main():
     rospy.init_node('ball_service')
     bh = BallHandler()
     rospy.spin()
+    roller_pub = rospy.Publisher('/roller_cmd', Float32)
+    roller_pub.publish(0.5)
 
 if __name__=='__main__':
     main()

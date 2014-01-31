@@ -66,7 +66,7 @@ class TheDecider(State):
         if (silo_valid and
                 self.silo_tries <= sum(map(abs,self.reactor_tries))):
             return 'silo'
-        elif (rospy.Time.now() - startTime < rospy.Duration(30.0)
+        elif (rospy.Time.now() - startTime > rospy.Duration(150.0)
                 and enemy_valid):
             return 'enemy'
         else:
@@ -163,7 +163,7 @@ def waitForStop(msg, ud):
 def waitForStopTimeout(ud):
     global startTime
     if (startTime != None and
-            rospy.Time.now() - startTime >= rospy.Duration(10.0)):
+            rospy.Time.now() - startTime >= rospy.Duration(180.0)):
         return 'valid'
 
 
